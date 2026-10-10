@@ -1,0 +1,56 @@
+# Laravel 13 / Symfony 8.1 dependencies in composer.lock require PHP 8.4.1+.
+FROM php:8.4-cli-alpine
+
+# Install system build dependencies and runtime libraries
+RUN apk add --no-cache \
+    postgresql-dev \
+    sqlite-dev \
+    libpng-dev \
+    libzip-dev \
+    oniguruma-dev \
+    libxml2-dev \
+    libmaxminddb-dev \
+    curl \
+    git \
+    unzip \
+    zip \
+    linux-headers \
+    $PHPIZE_DEPS \
+    && docker-php-ext-install -j$(nproc) \
+    pdo \
+    pdo_sqlite \
+    pdo_pgsql \
+    pgsql \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    gd \
+    zip \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && rm -rf /tmp/pear
+
+# Get Composer from official image
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+
+# This image is the Compose API service; never fall back to a workspace SQLite database.
+ENV DB_CONNECTION=pgsql
+
+# Copy full api source code
+COPY ./api /var/www/html
+
+# Install Composer dependencies cleanly
+ENV COMPOSER_ALLOW_SUPERUSER=1
+# Development tooling is intentionally installed because Laravel's generated bootstrap
+# cache references local service providers such as Laravel Pail.
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
+
+EXPOSE 8000
+
+# Seed only when the user table is empty; restarting a container must not duplicate demo accounts.
+# Run the PHP server directly so its request process inherits the Compose database environment.
+CMD ["sh", "-c", "if [ ! -f .env ]; then cp .env.example .env; fi && php artisan optimize:clear && php artisan key:generate --force && php artisan config:clear && php artisan migrate --force && if [ \"$(php artisan tinker --execute='echo App\\Models\\User::count();')\" = \"0\" ]; then php artisan db:seed --force; fi && exec php -S 0.0.0.0:8000 -t public public/index.php"]

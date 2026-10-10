@@ -1,0 +1,9 @@
+api/vendor
+api/node_modules
+api/database/*.sqlite
+api/database/*.sqlite-*
+api/storage/logs/*
+api/.env
+frontend/node_modules
+frontend/dist
+.git
