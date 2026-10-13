@@ -5,6 +5,7 @@ export type ClearanceStatus = 'pending' | 'cleared';
 export type DocRequestStatus = 'submitted' | 'processing' | 'ready_for_pickup' | 'released' | 'rejected';
 
 export interface User {
+  must_change_password: boolean;
   id: number;
   name: string;
   email: string;

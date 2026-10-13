@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Student;
+use App\Models\ProvisioningEmail;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -18,22 +19,25 @@ class AuthController extends Controller
         ]);
 
         $user = User::with(['student.clearance', 'student.enrollments.course', 'student.documentRequests', 'applications'])
-            ->where('email', $request->email)
+            ->whereRaw('LOWER(email) = ?', [strtolower(trim((string) $request->email))])
             ->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid institutional credentials. Please check your email and password.',
             ], 401);
         }
-        if (!$user->is_active) {
+        if (! $user->is_active) {
             return response()->json([
                 'success' => false,
                 'message' => 'This account is inactive. Contact the university service desk for assistance.',
             ], 403);
         }
 
+        if ($user->must_change_password && (! $user->temporary_password_expires_at || $user->temporary_password_expires_at->isPast())) {
+            return response()->json(['message' => 'Temporary credentials expired. Contact the Registrar.'], 403);
+        }
         [$plainToken, $token] = $this->issueToken($user);
 
         return response()->json([
@@ -45,46 +49,25 @@ class AuthController extends Controller
         ]);
     }
 
-    public function register(Request $request)
+    public function firstLoginReset(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email',
-            'password' => 'required|string|min:12',
-            'student_type' => 'required|in:new,transferee,irregular,old,shiftee,returnee',
-            'course_program' => 'required|string|max:255',
-            'year_level' => 'required|integer|min:1|max:6',
+            'current_password' => 'required|string|max:255',
+            'password' => 'required|string|min:12|max:255|confirmed|different:current_password',
         ]);
+        DB::transaction(function () use ($request) {
+            // Lock outbox first, matching delivery/reissue lock order.
+            $mail = ProvisioningEmail::where('user_id', $request->user()->id)->lockForUpdate()->first();
+            $user = User::lockForUpdate()->findOrFail($request->user()->id);
+            abort_unless($user->must_change_password, 409, 'Your account password has already been set.');
+            abort_unless($user->temporary_password_expires_at && $user->temporary_password_expires_at->isFuture(), 403, 'Temporary credentials expired. Contact the Registrar.');
+            abort_unless(Hash::check($request->current_password, $user->password), 422, 'Current password is incorrect.');
+            $user->update(['password' => $request->password, 'must_change_password' => false, 'temporary_password_expires_at' => null]);
+            $mail?->update(['temporary_password' => null]);
+            $user->apiAccessTokens()->delete();
+        });
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => 'student',
-        ]);
-
-        Student::create([
-            'user_id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'student_number' => 'PENDING-' . Str::upper(Str::random(10)),
-            'course_program' => $request->course_program,
-            'year_level' => $request->year_level,
-            'student_type' => $request->student_type,
-            'status' => 'pending',
-        ]);
-
-        $user->load(['student.clearance', 'student.enrollments', 'applications']);
-
-        [$plainToken, $token] = $this->issueToken($user);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Student registration successful.',
-            'user' => $user,
-            'access_token' => $plainToken,
-            'expires_at' => $token->expires_at,
-        ], 201);
+        return response()->json(['success' => true, 'message' => 'Password set. Sign in with your new password.']);
     }
 
     public function getPersonas(Request $request)

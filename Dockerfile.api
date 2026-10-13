@@ -53,4 +53,4 @@ EXPOSE 8000
 
 # Seed only when the user table is empty; restarting a container must not duplicate demo accounts.
 # Run the PHP server directly so its request process inherits the Compose database environment.
-CMD ["sh", "-c", "if [ ! -f .env ]; then cp .env.example .env; fi && php artisan optimize:clear && php artisan key:generate --force && php artisan config:clear && php artisan migrate --force && if [ \"$(php artisan tinker --execute='echo App\\Models\\User::count();')\" = \"0\" ]; then php artisan db:seed --force; fi && exec php -S 0.0.0.0:8000 -t public public/index.php"]
+CMD ["sh", "-c", "if [ ! -f .env ]; then cp .env.example .env; fi && php artisan optimize:clear && php artisan config:clear && php artisan migrate --force && if [ \"$(php artisan tinker --execute='echo App\\Models\\User::count();')\" = \"0\" ]; then php artisan db:seed --force; fi && exec php -S 0.0.0.0:8000 -t public public/index.php"]
