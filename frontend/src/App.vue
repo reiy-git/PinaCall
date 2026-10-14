@@ -6,15 +6,18 @@
     <!-- Main App Layout -->
     <div class="flex min-h-0 flex-1 w-full items-stretch">
       <!-- Role Sidebar -->
-      <Sidebar v-if="authState.user && !authState.serviceUnavailable && !routeError" />
+      <Sidebar v-if="authState.user && !authState.user.must_change_password && !authState.serviceUnavailable && !routeError" />
 
       <!-- Content Workspace Area -->
       <main class="min-w-0 flex-1 overflow-x-hidden p-4 sm:p-8 lg:p-10">
         <PortalErrorView v-if="authState.serviceUnavailable" kind="service-unavailable" @retry="retryConnection" />
         <PortalErrorView v-else-if="routeError" :kind="routeError" @home="goHome" @signout="portalApi.logout()" />
         <template v-else>
+          <SetPassword v-if="authState.user?.must_change_password" />
+          <EnrolleeReview v-else-if="pathname === '/admin/enrollees' && authState.user && ['registrar','admin'].includes(authState.user.role)" />
+          <PublicEnrollment v-else-if="pathname === '/enroll' && !authState.user" />
           <!-- Logged In State by Role -->
-          <template v-if="authState.user">
+          <template v-else-if="authState.user">
             <StudentDashboard v-if="authState.user.role === 'student'" />
             <RegistrarDashboard v-else-if="authState.user.role === 'registrar'" />
             <CashierDashboard v-else-if="authState.user.role === 'cashier'" />
@@ -54,6 +57,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { authState, portalApi } from './services/api';
+import PublicEnrollment from './components/enrollment/PublicEnrollment.vue';
+import EnrolleeReview from './components/registrar/EnrolleeReview.vue';
+import SetPassword from './components/auth/SetPassword.vue';
 import Navbar from './components/Navbar.vue';
 import Sidebar from './components/Sidebar.vue';
 import Toast from './components/Toast.vue';
@@ -66,6 +72,7 @@ import DeanDashboard from './components/dean/DeanDashboard.vue';
 import FacultyDashboard from './components/faculty/FacultyDashboard.vue';
 import AdminDashboard from './components/admin/AdminDashboard.vue';
 
+const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
 const routeError = ref<'not-found' | 'forbidden' | null>(null);
 
 function goHome() {
@@ -76,10 +83,12 @@ function retryConnection() {
   window.location.reload();
 }
 
-onMounted(() => {
-  const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
-  if (pathname === '/403' || pathname === '/forbidden') routeError.value = 'forbidden';
-  else if (pathname !== '/' && pathname !== '/index.html') routeError.value = 'not-found';
-  void portalApi.restoreSession();
+onMounted(async () => {
+  await portalApi.restoreSession();
+  if (authState.user?.must_change_password) return;
+  if (pathname === '/admin/enrollees' && !['registrar','admin'].includes(authState.user?.role || '')) routeError.value = 'forbidden';
+  else if (pathname === '/set-password') window.location.assign('/');
+  else if (pathname === '/403' || pathname === '/forbidden') routeError.value = 'forbidden';
+  else if (!['/', '/index.html', '/enroll', '/admin/enrollees'].includes(pathname)) routeError.value = 'not-found';
 });
 </script>

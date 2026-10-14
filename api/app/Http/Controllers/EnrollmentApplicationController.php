@@ -95,6 +95,12 @@ class EnrollmentApplicationController extends Controller
 
         $user = $request->user();
         $student = $user->student;
+        // A provisioned account already completed initial admission. Other categories
+        // remain available for continuing, returning and changing-program services.
+        if (in_array($request->student_type, ['new', 'transferee'], true) && $user->approvedAdmission()->exists()) {
+            return response()->json(['message' => 'Your initial admission is already approved. Use continuing-student services instead.'], 409);
+        }
+
         if ($student->applications()->where('status', 'pending')->exists()) {
             return response()->json(['message' => 'You already have an application awaiting review.'], 409);
         }

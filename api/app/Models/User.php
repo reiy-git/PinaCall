@@ -19,6 +19,8 @@ class User extends Authenticatable
         'role',
         'department',
         'is_active',
+        'must_change_password',
+        'temporary_password_expires_at',
     ];
 
     protected $hidden = [
@@ -37,6 +39,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'must_change_password' => 'boolean',
+            'temporary_password_expires_at' => 'datetime',
         ];
     }
 
@@ -48,6 +52,12 @@ class User extends Authenticatable
     public function applications()
     {
         return $this->hasMany(StudentApplication::class);
+    }
+
+    public function approvedAdmission()
+    {
+        return $this->hasOne(EnrolleeApplication::class)->where('status', 'APPROVED')
+            ->select(['id', 'user_id', 'reference', 'status', 'program', 'student_type', 'year_level', 'previous_school', 'reviewed_at']);
     }
 
     public function assignedSections()

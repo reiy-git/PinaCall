@@ -122,7 +122,10 @@ const sectionLabel = computed(() => authState.user?.role === 'cashier'
           ? 'Registrar services'
           : 'Student services');
 
-const navigationItems = computed(() => authState.user ? itemsByRole[authState.user.role] : []);
+const navigationItems = computed(() => authState.user ? itemsByRole[authState.user.role].map(item =>
+  authState.user?.approved_admission && item.page === 'enrollment'
+    ? { ...item, label: 'Subjects & sections' } : item
+) : []);
 
 function navigate(page: PortalPage) {
   if (!authState.user || !isPortalPageAllowed(authState.user.role, page)) return;
