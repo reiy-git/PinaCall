@@ -14,12 +14,14 @@ import { resetPortalPage } from './navigation';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
-class ApiRequestError extends Error {
+export class ApiRequestError extends Error {
   readonly status: number;
+  readonly errors: Record<string, string[]>;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, errors: Record<string, string[]> = {}) {
     super(message);
     this.status = status;
+    this.errors = errors;
     this.name = 'ApiRequestError';
   }
 }
@@ -64,7 +66,7 @@ export function showToast(type: 'success' | 'error' | 'info' | 'warning', title:
 }
 
 // Shared API fetch with explicit errors
-async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function apiFetch<T>(endpoint: string, options: RequestInit = {}, preserveView = false): Promise<T> {
   try {
     const res = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
@@ -79,7 +81,7 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
     if (!res.ok) {
       if (res.status === 422 && data.errors) {
         const firstError = Object.values(data.errors).flat()[0];
-        throw new Error(typeof firstError === 'string' ? firstError : data.message || 'Please check the information and try again.');
+        throw new ApiRequestError(typeof firstError === 'string' ? firstError : data.message || 'Please check the information and try again.', res.status, data.errors);
       }
       if (data.code === 'PASSWORD_CHANGE_REQUIRED') window.location.assign('/set-password');
       throw new ApiRequestError(data.message || `Request failed (${res.status}).`, res.status);
@@ -89,7 +91,7 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
     return data;
   } catch (err) {
     authState.isLiveApi = false;
-    if (err instanceof TypeError || (err instanceof ApiRequestError && err.status >= 500)) authState.serviceUnavailable = true;
+    if (!preserveView && (err instanceof TypeError || (err instanceof ApiRequestError && err.status >= 500))) authState.serviceUnavailable = true;
     console.warn(`PINACALL request to ${endpoint} failed:`, err);
     throw err;
   }
@@ -154,8 +156,11 @@ export const portalApi = {
     showToast('info', 'Signed Out', 'You have been logged out of the portal.');
   },
 
+  async getEnrollmentOptions(): Promise<{ programs: string[]; document_guidance: string }> {
+    return apiFetch('/enrollees/options', {}, true);
+  },
   async applyEnrollee(payload: FormData): Promise<{ reference: string }> {
-    return apiFetch('/enrollees/apply', { method: 'POST', body: payload });
+    return apiFetch('/enrollees/apply', { method: 'POST', body: payload }, true);
   },
   async getEnrollees(status: string, page = 1): Promise<EnrolleePage> {
     return apiFetch(`/admin/enrollees?status=${encodeURIComponent(status)}&page=${page}`);
@@ -421,7 +426,7 @@ export const portalApi = {
 
 export interface Enrollee {
   id: number; reference: string; name: string; email: string; contact_number: string;
-  program: string; year_level: number; student_type: string; educational_background: string;
+  program: string; year_level: number; student_type: string; educational_background: string; previous_school?: string | null;
   status: 'PENDING' | 'APPROVED' | 'REJECTED'; remarks: string | null;
   documents: { name: string; index: number }[]; email_sent_at: string | null;
 }

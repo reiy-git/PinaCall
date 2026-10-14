@@ -9,6 +9,7 @@
     <article v-for="a in page.data" :key="a.id" class="my-4 rounded-2xl border bg-white p-5">
       <h2 class="text-xl font-bold">{{ a.name }} · {{ a.status }}</h2>
       <p>{{ a.email }} · {{ a.contact_number }}</p><p>{{ a.program }} · Year {{ a.year_level }} · {{ a.student_type }}</p>
+      <p v-if="a.previous_school" class="mt-3">Previous school: {{ a.previous_school }}</p>
       <p class="my-3 whitespace-pre-wrap">{{ a.educational_background }}</p><p class="text-sm">Reference: {{ a.reference }}</p>
       <button v-for="doc in a.documents" :key="doc.index" @click="download(a.id, doc.index)" class="mr-4 my-3 text-emerald-800 underline">Download {{ doc.name }}</button>
       <template v-if="a.status === 'PENDING'">

@@ -18,7 +18,7 @@ class AuthController extends Controller
             'password' => 'required|string|max:255',
         ]);
 
-        $user = User::with(['student.clearance', 'student.enrollments.course', 'student.documentRequests', 'applications'])
+        $user = User::with(['student.clearance', 'student.enrollments.course', 'student.documentRequests', 'applications', 'approvedAdmission'])
             ->whereRaw('LOWER(email) = ?', [strtolower(trim((string) $request->email))])
             ->first();
 
@@ -76,7 +76,7 @@ class AuthController extends Controller
             return response()->json(['message' => 'Only administrators can view the account registry.'], 403);
         }
 
-        $users = User::with(['student.clearance', 'student.enrollments.course', 'student.documentRequests', 'applications'])
+        $users = User::with(['student.clearance', 'student.enrollments.course', 'student.documentRequests', 'applications', 'approvedAdmission'])
             ->get();
 
         return response()->json([
@@ -96,7 +96,7 @@ class AuthController extends Controller
     {
         return response()->json([
             'success' => true,
-            'user' => $request->user()->load(['student.clearance', 'student.enrollments.course', 'student.documentRequests', 'applications']),
+            'user' => $request->user()->load(['student.clearance', 'student.enrollments.course', 'student.documentRequests', 'applications', 'approvedAdmission']),
         ]);
     }
 

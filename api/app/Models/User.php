@@ -54,6 +54,12 @@ class User extends Authenticatable
         return $this->hasMany(StudentApplication::class);
     }
 
+    public function approvedAdmission()
+    {
+        return $this->hasOne(EnrolleeApplication::class)->where('status', 'APPROVED')
+            ->select(['id', 'user_id', 'reference', 'status', 'program', 'student_type', 'year_level', 'previous_school', 'reviewed_at']);
+    }
+
     public function assignedSections()
     {
         return $this->hasMany(AcademicSection::class, 'faculty_id');

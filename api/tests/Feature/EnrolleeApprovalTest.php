@@ -27,6 +27,7 @@ class EnrolleeApprovalTest extends TestCase
             'name' => 'Kim Applicant', 'email' => 'KIM@example.com', 'contact_number' => '09123456789',
             'program' => 'BS Computer Science', 'student_type' => 'new', 'year_level' => 1,
             'educational_background' => 'Senior high school graduate',
+            'previous_school' => 'Example Secondary School',
             'documents' => [UploadedFile::fake()->create('credentials.pdf', 20, 'application/pdf')],
         ], ['Accept' => 'application/json'])->assertCreated()->assertJsonPath('status', 'PENDING');
 
@@ -56,6 +57,12 @@ class EnrolleeApprovalTest extends TestCase
         $this->assertDatabaseCount('students', 0);
         $this->assertDatabaseCount('api_access_tokens', 0);
         $this->assertSame('kim@example.com', $a->email);
+        $this->assertSame('Example Secondary School', $a->previous_school);
+        $this->assertSame('BS Computer Science', $a->program);
+        $this->assertSame('new', $a->student_type);
+        $this->assertSame(1, $a->year_level);
+        $this->assertSame('09123456789', $a->contact_number);
+        $this->assertSame('Senior high school graduate', $a->educational_background);
         Storage::disk('local')->assertExists($a->documents[0]['path']);
         $this->postJson('/api/auth/register', [])->assertNotFound();
         $this->getJson('/api/admin/enrollees')->assertUnauthorized();
@@ -93,6 +100,74 @@ class EnrolleeApprovalTest extends TestCase
         $login = $this->postJson('/api/auth/login', ['email' => $user->email, 'password' => 'New-Secure-Password-2026!'])->assertOk();
         $this->withHeader('Authorization', 'Bearer '.$login->json('access_token'));
         $this->getJson('/api/courses')->assertOk();
+    }
+
+    public function test_approved_guest_cannot_repeat_initial_admission_but_can_use_continuing_services(): void
+    {
+        $a = $this->apply();
+        $this->reviewer();
+        $this->postJson("/api/admin/enrollees/{$a->id}/approve", [])->assertOk();
+        $user = User::findOrFail($a->fresh()->user_id);
+        $this->assertDatabaseHas('student_applications', ['user_id' => $user->id, 'previous_school' => 'Example Secondary School']);
+        $this->assertDatabaseHas('clearances', ['student_id' => $user->student->id, 'status' => 'pending', 'cashier_status' => false]);
+        $this->assertDatabaseCount('section_enrollments', 0);
+        $user->update(['must_change_password' => false]);
+        $this->withHeader('Authorization', 'Bearer '.$this->token($user));
+        $this->getJson('/api/auth/me')->assertOk()
+            ->assertJsonPath('user.approved_admission.reference', $a->reference)
+            ->assertJsonMissingPath('user.approved_admission.documents');
+        $payload = ['student_type' => 'new', 'target_program' => 'BS Computer Science', 'year_level' => 1, 'educational_background' => 'Graduate'];
+        foreach (['new', 'transferee'] as $category) {
+            $payload['student_type'] = $category;
+            $this->postJson('/api/applications', $payload)->assertConflict();
+        }
+        $this->assertDatabaseCount('student_applications', 1);
+        $this->assertSame('active', $user->student->fresh()->status);
+        $this->getJson('/api/grades')->assertOk();
+        $this->getJson('/api/clearances')->assertOk();
+        $this->getJson('/api/sections')->assertOk();
+        $this->getJson('/api/documents')->assertOk();
+        foreach (['old', 'irregular', 'shiftee', 'returnee'] as $category) {
+            $payload['student_type'] = $category;
+            $this->postJson('/api/applications', $payload)->assertCreated()->assertJsonPath('application.student_type', $category);
+            \App\Models\StudentApplication::where('user_id', $user->id)->where('status', 'pending')->update(['status' => 'approved']);
+        }
+    }
+
+    public function test_guest_fields_and_document_limits_are_validated_without_writes(): void
+    {
+        // Exercise many invalid payloads in one test without exhausting the live limiter.
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+        Storage::fake('local');
+        $valid = ['name' => 'Applicant', 'email' => 'applicant@example.com', 'contact_number' => '123', 'program' => 'BS Computer Science', 'student_type' => 'new', 'year_level' => 1, 'educational_background' => 'Graduate'];
+        foreach ([['previous_school', str_repeat('x', 256)], ['previous_school', ['invalid']], ['name', ''], ['email', 'invalid'], ['contact_number', str_repeat('1', 31)], ['year_level', 7], ['year_level', 1.5], ['student_type', 'unsupported'], ['educational_background', str_repeat('x', 5001)]] as [$field, $value]) {
+            $payload = array_merge($valid, [$field => $value, 'documents' => [UploadedFile::fake()->create('record.pdf', 20, 'application/pdf')]]);
+            $this->post('/api/enrollees/apply', $payload, ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors($field);
+        }
+        foreach ([[], array_map(fn () => UploadedFile::fake()->create('record.pdf', 20, 'application/pdf'), range(1, 6)), [UploadedFile::fake()->create('large.pdf', 5121, 'application/pdf')]] as $documents) {
+            $this->post('/api/enrollees/apply', array_merge($valid, ['documents' => $documents]), ['Accept' => 'application/json'])->assertUnprocessable();
+        }
+        $this->assertDatabaseCount('enrollee_applications', 0);
+        $this->assertDatabaseCount('users', 0);
+        $this->assertEmpty(Storage::disk('local')->allFiles());
+        $this->post('/api/enrollees/apply', array_merge($valid, ['documents' => [UploadedFile::fake()->create('record.pdf', 20, 'application/pdf')]]), ['Accept' => 'application/json'])->assertCreated();
+        $this->assertNull(EnrolleeApplication::firstOrFail()->previous_school);
+    }
+
+    public function test_public_submission_remains_throttled(): void
+    {
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            $this->postJson('/api/enrollees/apply', [])->assertUnprocessable();
+        }
+        $this->postJson('/api/enrollees/apply', [])->assertTooManyRequests();
+        $this->assertDatabaseCount('enrollee_applications', 0);
+    }
+
+    public function test_public_options_use_configured_programs_and_document_guidance(): void
+    {
+        config(['enrollment.programs' => ['Configured program'], 'enrollment.document_guidance' => 'Ask the Registrar for the current list.']);
+        $this->getJson('/api/enrollees/options')->assertOk()
+            ->assertExactJson(['programs' => ['Configured program'], 'document_guidance' => 'Ask the Registrar for the current list.']);
     }
 
     public function test_rejection_and_role_checks_never_provision_an_account(): void

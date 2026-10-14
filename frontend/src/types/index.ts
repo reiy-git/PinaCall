@@ -14,6 +14,15 @@ export interface User {
   is_active?: boolean;
   student?: Student;
   applications?: StudentApplication[];
+  approved_admission?: {
+    reference: string;
+    status: 'APPROVED';
+    program: string;
+    student_type: StudentType;
+    year_level: number;
+    previous_school: string | null;
+    reviewed_at: string | null;
+  } | null;
 }
 
 export interface Student {

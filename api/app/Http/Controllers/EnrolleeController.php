@@ -35,6 +35,7 @@ class EnrolleeController extends Controller
             'student_type' => 'required|in:new,transferee,irregular,old,shiftee,returnee',
             'year_level' => 'required|integer|min:1|max:6',
             'educational_background' => 'required|string|max:5000',
+            'previous_school' => 'nullable|string|max:255',
             'documents' => 'required|array|min:1|max:5',
             'documents.*' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
@@ -59,6 +60,14 @@ class EnrolleeController extends Controller
         }
 
         return response()->json(['success' => true, 'reference' => $application->reference, 'status' => 'PENDING'], 201);
+    }
+
+    public function options(): JsonResponse
+    {
+        return response()->json([
+            'programs' => config('enrollment.programs'),
+            'document_guidance' => config('enrollment.document_guidance'),
+        ]);
     }
 
     public function index(Request $request): JsonResponse
@@ -106,7 +115,7 @@ class EnrolleeController extends Controller
                 $password = bin2hex(random_bytes(24));
                 $user = User::create(['name' => $a->name, 'email' => $a->email, 'password' => $password, 'role' => 'student', 'must_change_password' => true, 'temporary_password_expires_at' => now()->addHours(72)]);
                 $student = Student::create(['user_id' => $user->id, 'name' => $a->name, 'email' => $a->email, 'student_number' => 'PC-'.Str::upper(Str::random(12)), 'course_program' => $a->program, 'year_level' => $a->year_level, 'student_type' => $a->student_type, 'status' => 'active']);
-                StudentApplication::create(['user_id' => $user->id, 'student_id' => $student->id, 'type' => in_array($a->student_type, ['new', 'transferee', 'shiftee', 'returnee']) ? $a->student_type : 'new', 'student_type' => $a->student_type, 'educational_background' => $a->educational_background, 'target_program' => $a->program, 'year_level' => $a->year_level, 'contact_number' => $a->contact_number, 'academic_year' => config('enrollment.academic_year'), 'semester' => config('enrollment.semester'), 'submitted_documents' => array_column($a->documents, 'name'), 'status' => 'approved', 'reviewed_by' => $request->user()->name, 'evaluation_notes' => $request->remarks]);
+                StudentApplication::create(['user_id' => $user->id, 'student_id' => $student->id, 'type' => in_array($a->student_type, ['new', 'transferee', 'shiftee', 'returnee']) ? $a->student_type : 'new', 'student_type' => $a->student_type, 'educational_background' => $a->educational_background, 'previous_school' => $a->previous_school, 'target_program' => $a->program, 'year_level' => $a->year_level, 'contact_number' => $a->contact_number, 'academic_year' => config('enrollment.academic_year'), 'semester' => config('enrollment.semester'), 'submitted_documents' => array_column($a->documents, 'name'), 'status' => 'approved', 'reviewed_by' => $request->user()->name, 'evaluation_notes' => $request->remarks]);
                 Clearance::create(['student_id' => $student->id, 'academic_year' => config('enrollment.academic_year'), 'semester' => config('enrollment.semester'), 'status' => 'pending']);
                 $a->update(['status' => 'APPROVED', 'user_id' => $user->id, 'reviewed_by' => $request->user()->id, 'reviewed_at' => now(), 'remarks' => $request->remarks]);
                 ProvisioningEmail::create(['user_id' => $user->id, 'temporary_password' => $password, 'available_at' => now()]);

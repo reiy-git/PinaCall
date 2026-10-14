@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 
 // Stateless API routes: Vue calls these endpoints without Laravel web-session CSRF.
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
+Route::get('/enrollees/options', [EnrolleeController::class, 'options']);
 Route::post('/enrollees/apply', [EnrolleeController::class, 'apply'])->middleware('throttle:register');
 
 Route::middleware('portal.token')->group(function () {
