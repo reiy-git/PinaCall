@@ -1,2 +1,63 @@
 @import "tailwindcss";
 
+/* Import DM Sans + Space Grotesk for modern typography */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+/* ========================================
+   PINACALL DESIGN TOKENS
+   ========================================
+   Navy:       #2a3b6f
+   Coral:      #f5543d
+   Lime/Accent:#c3eb4d
+   Light BG:   #edeef2
+   Muted Blue: #869eb7
+   Warm Tan:   #d7cd9b
+   Steel:      #b7c3d2
+   Dusty Rose: #d5988a
+   ======================================== */
+
+:root {
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+}
+
+/* Global typography improvements */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+  background-color: #edeef2;
+}
+
+/* Better number rendering */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Optimize heading rendering — use Space Grotesk for display headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Space Grotesk', 'DM Sans', system-ui, sans-serif;
+  text-wrap: balance;
+  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+}
+
+/* Optimize paragraph rendering */
+p {
+  text-wrap: pretty;
+  hanging-punctuation: first last;
+}
+
+/* Custom scrollbar for sidebar */
+.pina-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.pina-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.pina-scrollbar::-webkit-scrollbar-thumb {
+  background: #b7c3d2;
+  border-radius: 9999px;
+}
+.pina-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #869eb7;
+}
