@@ -66,7 +66,7 @@ import { computed, watch } from 'vue';
 import ThemeToggle from './ThemeToggle.vue';
 import { authState, formatDisplayName, portalApi } from '../services/api';
 import {
-  activeSidebarSection, defaultPortalPage, isPortalPageAllowed, navItemsByRole,
+  activeSidebarSection, defaultPortalPage, isPortalPageAllowed, navItemsForUser,
   pageIcons, portalSectionLabel, roleDisplayName, setSidebarSection, type PortalPage,
 } from '../services/navigation';
 
@@ -74,7 +74,7 @@ const roleLabel = computed(() => roleDisplayName(authState.user?.role));
 const displayName = computed(() => formatDisplayName(authState.user?.name));
 const initials = computed(() => displayName.value.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('') || 'U');
 const sectionLabel = computed(() => portalSectionLabel(authState.user?.role));
-const navigationItems = computed(() => authState.user ? navItemsByRole[authState.user.role] : []);
+const navigationItems = computed(() => navItemsForUser(authState.user));
 
 function navigate(page: PortalPage) {
   if (!authState.user || !isPortalPageAllowed(authState.user.role, page)) return;
