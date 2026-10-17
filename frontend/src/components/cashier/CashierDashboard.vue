@@ -58,7 +58,18 @@
         <span>Document Request Payments</span>
         <span class="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-400 text-slate-950">{{ unpaidDocsCount }}</span>
       </button>
+
+      <button
+        @click="activeTab = 'queue'"
+        class="px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap"
+        :class="activeTab === 'queue' ? 'bg-[#064e3b] text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
+      >
+        <span>Queue Management</span>
+      </button>
     </div>
+
+    <!-- TAB: QUEUE MANAGEMENT -->
+    <StaffQueueConsole v-if="activeTab === 'queue'" stage="cashier" />
 
     <!-- TAB 1: CLEARANCE LEDGER -->
     <div v-if="activeTab === 'clearances'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -176,8 +187,9 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { portalApi } from '../../services/api';
 import type { Clearance, DocumentRequest } from '../../types';
 import { activeSidebarSection } from '../../services/navigation';
+import StaffQueueConsole from '../queue/StaffQueueConsole.vue';
 
-const activeTab = ref<'clearances' | 'documents'>('clearances');
+const activeTab = ref<'clearances' | 'documents' | 'queue'>('clearances');
 watch(activeSidebarSection, (page) => {
   if (page === 'clearances' || page === 'documents') activeTab.value = page;
 });

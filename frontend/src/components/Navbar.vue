@@ -25,6 +25,15 @@
             <p class="mt-0.5 text-xs font-semibold text-slate-200">First Semester · AY 2026–2027</p>
           </div>
 
+          <div class="hidden md:flex items-center gap-2">
+            <a href="/kiosk" target="_blank" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-900/60 text-emerald-300 border border-emerald-700/40 hover:bg-emerald-950 transition">
+              Kiosk Terminal
+            </a>
+            <a href="/lobby" target="_blank" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-900/60 text-emerald-300 border border-emerald-700/40 hover:bg-emerald-950 transition">
+              Lobby TV Monitor
+            </a>
+          </div>
+
           <!-- Active User Profile & Sign Out -->
           <div v-if="authState.user" class="flex items-center gap-3">
             <div class="hidden lg:flex flex-col text-right">

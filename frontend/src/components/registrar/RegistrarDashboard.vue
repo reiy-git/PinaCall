@@ -67,7 +67,18 @@
         <span>Document Request Fulfillment</span>
         <span class="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-400 text-slate-950">{{ pendingDocsCount }}</span>
       </button>
+
+      <button
+        @click="activeTab = 'queue'"
+        class="px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap"
+        :class="activeTab === 'queue' ? 'bg-[#064e3b] text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
+      >
+        <span>Queue Management</span>
+      </button>
     </div>
+
+    <!-- TAB: QUEUE MANAGEMENT -->
+    <StaffQueueConsole v-if="activeTab === 'queue'" stage="registrar" />
 
     <!-- TAB 1: APPLICATIONS QUEUE -->
     <div v-if="activeTab === 'applications'" class="space-y-4">
@@ -361,9 +372,10 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { portalApi } from '../../services/api';
 import { activeSidebarSection } from '../../services/navigation';
 import Modal from '../Modal.vue';
+import StaffQueueConsole from '../queue/StaffQueueConsole.vue';
 import type { StudentApplication, Student, DocumentRequest, AcademicSection } from '../../types';
 
-const activeTab = ref<'applications' | 'students' | 'documents'>('applications');
+const activeTab = ref<'applications' | 'students' | 'documents' | 'queue'>('applications');
 watch(activeSidebarSection, (page) => {
   if (page === 'applications' || page === 'students' || page === 'documents') activeTab.value = page;
 });

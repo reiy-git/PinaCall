@@ -9,6 +9,11 @@ import type {
   AcademicSection,
   DocumentRequest,
   DashboardStats,
+  QueueToken,
+  LobbyDisplayData,
+  StaffQueueData,
+  QueueStatusResponse,
+  ServiceStage,
 } from '../types';
 import { resetPortalPage } from './navigation';
 
@@ -421,6 +426,52 @@ export const portalApi = {
   async getDashboardStats(): Promise<DashboardStats> {
     const res = await apiFetch<{ success: boolean; stats: DashboardStats }>('/dashboard/stats');
     return res.stats;
+  },
+
+  // Queue Management
+  async kioskCheckin(studentNumber: string): Promise<{ success: boolean; message: string; token?: QueueToken; already_checked_in?: boolean }> {
+    return apiFetch('/queue/checkin', {
+      method: 'POST',
+      body: JSON.stringify({ student_number: studentNumber }),
+    });
+  },
+
+  async getLobbyDisplay(): Promise<{ success: boolean } & LobbyDisplayData> {
+    return apiFetch('/queue/lobby');
+  },
+
+  async getQueueStatus(studentNumber: string): Promise<{ success: boolean } & QueueStatusResponse> {
+    return apiFetch(`/queue/status?student_number=${encodeURIComponent(studentNumber)}`);
+  },
+
+  async getStaffQueue(serviceStage: ServiceStage): Promise<{ success: boolean } & StaffQueueData> {
+    return apiFetch(`/queue/staff?service_stage=${serviceStage}`);
+  },
+
+  async callNextInQueue(serviceStage: ServiceStage, windowNumber: string): Promise<{ success: boolean; message: string; token?: QueueToken }> {
+    return apiFetch('/queue/call-next', {
+      method: 'POST',
+      body: JSON.stringify({ service_stage: serviceStage, window_number: windowNumber }),
+    });
+  },
+
+  async recallDisplay(tokenId: number): Promise<{ success: boolean; message: string; token: QueueToken }> {
+    return apiFetch(`/queue/${tokenId}/recall`, { method: 'POST' });
+  },
+
+  async markNoShow(tokenId: number): Promise<{ success: boolean; message: string; token: QueueToken }> {
+    return apiFetch(`/queue/${tokenId}/no-show`, { method: 'POST' });
+  },
+
+  async completeTransaction(tokenId: number, action: 'pay_and_process' | 'release_document'): Promise<{ success: boolean; message: string; token: QueueToken }> {
+    return apiFetch(`/queue/${tokenId}/complete`, {
+      method: 'POST',
+      body: JSON.stringify({ action }),
+    });
+  },
+
+  async markReadyForPickup(tokenId: number): Promise<{ success: boolean; message: string; token: QueueToken }> {
+    return apiFetch(`/queue/${tokenId}/ready-for-pickup`, { method: 'POST' });
   },
 };
 

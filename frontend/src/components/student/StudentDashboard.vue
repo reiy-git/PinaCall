@@ -534,6 +534,8 @@
 
     <!-- TAB 5: DOCUMENT REQUESTS -->
     <div v-if="activeTab === 'documents'" class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 space-y-6">
+      <StudentQueueStatus />
+
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
         <div>
           <h3 class="text-lg font-bold text-slate-900">Official Document Request Center</h3>
@@ -663,6 +665,7 @@ import { authState, formatDisplayName, portalApi } from '../../services/api';
 import { activeSidebarSection } from '../../services/navigation';
 import Modal from '../Modal.vue';
 import SectionWorkspace from '../sections/SectionWorkspace.vue';
+import StudentQueueStatus from '../queue/StudentQueueStatus.vue';
 import type { StudentType, StudentApplication, Clearance, Enrollment, DocumentRequest } from '../../types';
 
 type TabType = 'overview' | 'enrollment' | 'clearance' | 'grades' | 'documents';

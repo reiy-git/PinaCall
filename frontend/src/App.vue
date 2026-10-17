@@ -16,6 +16,8 @@
           <SetPassword v-if="authState.user?.must_change_password" />
           <EnrolleeReview v-else-if="pathname === '/admin/enrollees' && authState.user && ['registrar','admin'].includes(authState.user.role)" />
           <PublicEnrollment v-else-if="pathname === '/enroll' && !authState.user" />
+          <KioskCheckIn v-else-if="pathname === '/kiosk'" />
+          <LobbyDisplay v-else-if="pathname === '/lobby'" />
           <!-- Logged In State by Role -->
           <template v-else-if="authState.user">
             <StudentDashboard v-if="authState.user.role === 'student'" />
@@ -60,6 +62,8 @@ import { authState, portalApi } from './services/api';
 import PublicEnrollment from './components/enrollment/PublicEnrollment.vue';
 import EnrolleeReview from './components/registrar/EnrolleeReview.vue';
 import SetPassword from './components/auth/SetPassword.vue';
+import KioskCheckIn from './components/queue/KioskCheckIn.vue';
+import LobbyDisplay from './components/queue/LobbyDisplay.vue';
 import Navbar from './components/Navbar.vue';
 import Sidebar from './components/Sidebar.vue';
 import Toast from './components/Toast.vue';
@@ -89,6 +93,6 @@ onMounted(async () => {
   if (pathname === '/admin/enrollees' && !['registrar','admin'].includes(authState.user?.role || '')) routeError.value = 'forbidden';
   else if (pathname === '/set-password') window.location.assign('/');
   else if (pathname === '/403' || pathname === '/forbidden') routeError.value = 'forbidden';
-  else if (!['/', '/index.html', '/enroll', '/admin/enrollees'].includes(pathname)) routeError.value = 'not-found';
+  else if (!['/', '/index.html', '/enroll', '/admin/enrollees', '/kiosk', '/lobby'].includes(pathname)) routeError.value = 'not-found';
 });
 </script>

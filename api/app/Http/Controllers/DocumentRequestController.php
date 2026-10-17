@@ -72,8 +72,8 @@ class DocumentRequestController extends Controller
             'copies' => $request->copies,
             'fee' => $totalFee,
             'payment_status' => 'unpaid',
-            'status' => 'submitted',
-            'remarks' => 'Request logged into Registrar queue. Proceed to Cashier for fee settlement.',
+            'status' => 'waiting_for_payment',
+            'remarks' => 'Request submitted. Proceed to campus kiosk to check in and enter the digital queue.',
         ]);
 
         return response()->json([
@@ -90,7 +90,7 @@ class DocumentRequestController extends Controller
             return response()->json(['message' => 'You are not authorized to update document requests.'], 403);
         }
         $request->validate([
-            'status' => 'nullable|in:submitted,processing,ready_for_pickup,released,rejected',
+            'status' => 'nullable|in:waiting_for_payment,submitted,processing,ready_for_pickup,released,rejected',
             'payment_status' => 'nullable|in:unpaid,paid',
             'remarks' => 'nullable|string',
         ]);
@@ -108,13 +108,14 @@ class DocumentRequestController extends Controller
                 return response()->json(['message' => 'A settled document fee cannot be reversed through the standard cashier workflow.'], 422);
             }
             $docRequest->payment_status = $request->payment_status;
-            if ($request->payment_status === 'paid' && $docRequest->status === 'submitted') {
+            if ($request->payment_status === 'paid' && in_array($docRequest->status, ['submitted', 'waiting_for_payment'], true)) {
                 $docRequest->status = 'processing';
             }
         }
 
         if ($request->has('status')) {
             $allowedTransitions = [
+                'waiting_for_payment' => ['submitted', 'rejected'],
                 'submitted' => ['processing', 'rejected'],
                 'processing' => ['ready_for_pickup', 'rejected'],
                 'ready_for_pickup' => ['released'],
