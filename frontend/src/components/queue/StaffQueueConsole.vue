@@ -160,10 +160,10 @@
           <template v-else>
             <button
               @click="handleComplete('release_document')"
-              :disabled="actionLoading || currentlyServing.document_request?.payment_status !== 'paid' || currentlyServing.document_request?.status !== 'ready_for_pickup'"
+              :disabled="actionLoading || currentlyServing.document_request?.payment_status !== 'paid' || !['ready_for_pickup', 'released'].includes(currentlyServing.document_request?.status || '')"
               class="w-full rounded-xl bg-emerald-700 px-6 py-3 text-sm font-black text-white uppercase tracking-wider hover:bg-emerald-600 disabled:opacity-50 transition shadow-lg"
             >
-              Complete Transaction & Release Document
+              {{ currentlyServing.document_request?.status === 'released' ? 'Complete Queue Ticket' : 'Complete Transaction & Release Document' }}
             </button>
           </template>
         </div>
@@ -234,7 +234,7 @@ let refreshInterval: ReturnType<typeof setInterval>;
 
 const currentlyServing = computed<QueueToken | null>(() => {
   if (!queueData.value) return null;
-  return queueData.value.serving[0] || null;
+  return queueData.value.serving.find((token) => token.window_number === windowNumber.value) || null;
 });
 
 async function loadQueue() {
