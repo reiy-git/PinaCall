@@ -1,5 +1,5 @@
 import { ref, watch } from 'vue';
-import type { UserRole } from '../types';
+import type { User, UserRole } from '../types';
 
 export type PortalPage =
   | 'overview' | 'enrollment' | 'clearance' | 'grades' | 'documents'
@@ -88,6 +88,13 @@ export const navItemsByRole: Record<UserRole, PortalNavItem[]> = {
     { page: 'courses', label: 'Subject catalog' },
   ],
 };
+
+// Students with an approved admission no longer submit an initial application; the page is their subjects & sections.
+export function navItemsForUser(user?: User | null): PortalNavItem[] {
+  if (!user) return [];
+  return navItemsByRole[user.role].map((item) =>
+    user.approved_admission && item.page === 'enrollment' ? { ...item, label: 'Subjects & sections' } : item);
+}
 
 export function roleDisplayName(role?: UserRole | null) {
   switch (role) {
