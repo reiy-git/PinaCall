@@ -22,7 +22,7 @@
           >
             <div
               v-if="modelValue"
-              class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all w-full border border-slate-200"
+              class="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-lg transition-all w-full border border-slate-200"
               :class="maxWidthClass"
             >
               <!-- Header -->
