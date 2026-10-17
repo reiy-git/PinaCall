@@ -20,7 +20,8 @@ class QueueController extends Controller
             'student_number' => 'required|string',
         ]);
 
-        $student = Student::where('student_number', $request->student_number)->first();
+        $normalizedStudentNumber = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $request->student_number));
+        $student = Student::whereRaw("UPPER(REPLACE(REPLACE(REPLACE(TRIM(student_number), '-', ''), ' ', ''), '_', '')) = ?", [$normalizedStudentNumber])->first();
 
         if (!$student) {
             return response()->json([

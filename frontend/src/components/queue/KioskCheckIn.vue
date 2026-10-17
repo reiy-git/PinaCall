@@ -1,192 +1,123 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-zinc-950 via-emerald-950 to-emerald-900 flex flex-col items-center justify-center p-6 text-white">
-    <!-- Header -->
-    <div class="text-center mb-8">
-      <p class="text-xs font-bold uppercase tracking-[0.25em] text-emerald-400">PINACALL Campus Check-In</p>
-      <h1 class="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Administration Building Hall</h1>
+  <main class="min-h-screen bg-navy px-3 py-4 text-slate-900 sm:px-6 sm:py-6">
+    <div class="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-xl flex-col justify-center">
+      <section class="overflow-hidden rounded-[2rem] bg-white shadow-2xl shadow-black/25 ring-1 ring-white/30" aria-labelledby="kiosk-title">
+        <header class="bg-navy px-6 py-4 text-white sm:px-8">
+          <p class="text-lg font-bold tracking-tight">Pina<span class="rounded bg-lime px-1 text-navy">Call</span></p>
+          <p class="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">Self-service check-in</p>
+        </header>
+
+        <div class="p-5 sm:p-8">
+          <div v-if="result" class="py-5 text-center" role="status" aria-live="polite">
+            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl" :class="result.success ? 'bg-lime text-navy' : 'bg-coral text-white'">
+              <svg v-if="result.success" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
+              <svg v-else class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+            </div>
+            <p class="mt-5 text-sm font-bold uppercase tracking-wider" :class="result.success ? 'text-navy' : 'text-coral'">{{ result.success ? 'Check-in confirmed' : 'Check-in could not be completed' }}</p>
+            <p v-if="result.success" class="mt-2 text-6xl font-bold tracking-tight text-navy">{{ result.token?.token_number }}</p>
+            <p class="mt-3 text-sm text-slate-600">{{ result.success ? 'Please watch the queue monitor for your number.' : result.message }}</p>
+            <button type="button" class="mt-7 min-h-16 w-full rounded-2xl bg-navy px-5 py-4 text-base font-bold text-white transition hover:brightness-110 focus-visible:outline-lime" @click="resetForm">Start new check-in</button>
+            <p class="mt-3 text-xs text-slate-500">This screen resets automatically in a few seconds.</p>
+          </div>
+
+          <form v-else @submit.prevent="submitCheckin" @keydown.enter.prevent="submitCheckin">
+            <div class="text-center">
+              <h1 id="kiosk-title" class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Enter your Student ID</h1>
+              <p class="mt-1 text-sm text-slate-500">Use the keypad below to enter your ID.</p>
+            </div>
+
+            <label for="student-id" class="sr-only">Student ID</label>
+            <input
+              id="student-id"
+              ref="studentInput"
+              :value="formattedStudentId || ''"
+              type="text"
+              inputmode="none"
+              autocomplete="off"
+              readonly
+              placeholder="Touch numbers to begin"
+              class="mt-6 min-h-[4.5rem] w-full rounded-2xl border-2 border-slate-200 bg-slate-50 px-4 text-center font-mono text-2xl font-bold tracking-[0.12em] text-navy outline-none placeholder:font-sans placeholder:text-base placeholder:font-medium placeholder:tracking-normal placeholder:text-slate-400 sm:text-3xl"
+              aria-describedby="student-id-hint"
+              :disabled="isLoading"
+            >
+            <p id="student-id-hint" class="mt-2 text-center text-xs text-slate-500">Your ID is shown only during this check-in.</p>
+
+            <div class="mx-auto mt-5 grid max-w-sm grid-cols-3 gap-3" aria-label="Student ID number pad">
+              <button
+                v-for="key in keypadKeys"
+                :key="key"
+                type="button"
+                class="min-h-[4.25rem] rounded-2xl border border-slate-200 bg-white text-2xl font-bold text-navy shadow-sm transition hover:bg-slate-50 active:scale-[0.97] active:bg-lime/40 disabled:opacity-50 sm:min-h-[4.75rem]"
+                :aria-label="key === 'delete' ? 'Delete last digit' : `Enter ${key}`"
+                :disabled="isLoading || studentId.length >= studentIdMaxLength"
+                @click="appendDigit(key)"
+              >{{ key }}</button>
+              <button type="button" class="min-h-[4.25rem] rounded-2xl border border-slate-200 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-600 transition hover:bg-slate-200 active:scale-[0.97] disabled:opacity-50 sm:min-h-[4.75rem]" :disabled="isLoading || !studentId" @click="clearId">Clear</button>
+              <button type="button" class="min-h-[4.25rem] rounded-2xl border border-slate-200 bg-white text-2xl font-bold text-navy shadow-sm transition hover:bg-slate-50 active:scale-[0.97] disabled:opacity-50 sm:min-h-[4.75rem]" aria-label="Enter zero" :disabled="isLoading || studentId.length >= studentIdMaxLength" @click="appendDigit('0')">0</button>
+              <button type="button" class="min-h-[4.25rem] rounded-2xl border border-slate-200 bg-slate-100 text-xl font-bold text-navy transition hover:bg-slate-200 active:scale-[0.97] disabled:opacity-50 sm:min-h-[4.75rem]" aria-label="Delete last digit" :disabled="isLoading || !studentId" @click="deleteDigit">⌫</button>
+            </div>
+
+            <button type="submit" class="mt-5 min-h-16 w-full rounded-2xl bg-lime px-5 py-4 text-base font-bold text-navy shadow-sm transition hover:brightness-95 focus-visible:outline-navy disabled:cursor-not-allowed disabled:opacity-50" :disabled="!studentId.length || isLoading">
+              {{ isLoading ? 'Checking your request…' : 'Check in' }}
+            </button>
+          </form>
+        </div>
+      </section>
+      <p class="mt-4 text-center text-xs font-medium text-white/70">Touchscreen self-service terminal</p>
     </div>
-
-    <!-- Check-in Card -->
-    <div class="w-full max-w-lg rounded-3xl border border-emerald-800/40 bg-black/40 p-8 shadow-2xl backdrop-blur-sm">
-      <!-- Success State -->
-      <div v-if="result" class="text-center space-y-5">
-        <div v-if="result.success" class="space-y-4">
-          <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/20 ring-2 ring-emerald-400">
-            <span class="text-4xl">✓</span>
-          </div>
-          <div>
-            <p class="text-sm text-emerald-300 font-semibold uppercase tracking-wider">{{ result.already_checked_in ? 'Already Checked In' : 'Check-In Successful' }}</p>
-            <p class="mt-3 text-5xl font-black text-white tracking-tight">{{ result.token?.token_number }}</p>
-            <p class="mt-2 text-sm text-slate-300">{{ result.message }}</p>
-          </div>
-          <button
-            @click="resetForm"
-            class="mt-4 w-full rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg hover:bg-emerald-500 transition"
-          >
-            New Check-In
-          </button>
-        </div>
-
-        <div v-else class="space-y-4">
-          <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-red-500/20 ring-2 ring-red-400">
-            <span class="text-4xl">✕</span>
-          </div>
-          <p class="text-sm text-red-300 font-semibold">{{ result.message }}</p>
-          <button
-            @click="resetForm"
-            class="mt-4 w-full rounded-xl bg-white/10 px-6 py-3 text-sm font-bold text-white border border-white/20 hover:bg-white/20 transition"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-
-      <!-- Input State -->
-      <div v-else class="space-y-6">
-        <div class="text-center">
-          <p class="text-emerald-200 text-sm font-medium">Welcome! Please check in to enter the digital queue.</p>
-        </div>
-
-        <div>
-          <label class="text-xs font-bold uppercase tracking-wider text-emerald-300/80 mb-2 block">Enter Your Student ID</label>
-          <div
-            class="w-full rounded-xl border border-emerald-700/50 bg-black/50 px-4 py-4 text-2xl font-bold tracking-[0.15em] text-white text-center min-h-[3.5rem] flex items-center justify-center"
-          >
-            {{ studentId || '—' }}
-          </div>
-        </div>
-
-        <!-- Numpad -->
-        <div class="grid grid-cols-3 gap-2">
-          <button
-            v-for="key in numpadKeys"
-            :key="key"
-            @click="onKeyPress(key)"
-            class="rounded-xl border border-emerald-800/40 bg-white/5 px-4 py-4 text-xl font-bold text-white hover:bg-emerald-700/30 active:bg-emerald-600/40 transition select-none"
-            :class="{
-              'col-span-1': key !== 'ENTER',
-            }"
-          >
-            {{ key === 'DEL' ? '⌫' : key === 'CLR' ? 'C' : key }}
-          </button>
-        </div>
-
-        <!-- Submit -->
-        <button
-          @click="submitCheckin"
-          :disabled="!studentId || isLoading"
-          class="w-full rounded-xl bg-emerald-600 px-6 py-4 text-lg font-black uppercase tracking-wider text-white shadow-lg transition disabled:opacity-40 disabled:cursor-not-allowed hover:bg-emerald-500"
-        >
-          <span v-if="isLoading" class="flex items-center justify-center gap-2">
-            <span class="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
-            Checking In...
-          </span>
-          <span v-else>Generate Queue Token</span>
-        </button>
-
-        <p class="text-center text-xs text-emerald-200/60">
-          <span class="font-semibold text-amber-300">Note:</span> You must have an active request submitted in the PINACALL portal to activate your token.
-        </p>
-      </div>
-    </div>
-
-    <!-- Queue Status Lookup (bottom) -->
-    <div class="mt-6 w-full max-w-lg">
-      <button
-        @click="showStatusLookup = !showStatusLookup"
-        class="w-full text-center text-xs font-semibold text-emerald-300/70 hover:text-emerald-300 transition"
-      >
-        {{ showStatusLookup ? 'Hide' : 'Check' }} Queue Status
-      </button>
-      <div v-if="showStatusLookup" class="mt-3 rounded-2xl border border-emerald-800/30 bg-black/30 p-4 space-y-3">
-        <div class="flex gap-2">
-          <input
-            v-model="statusLookupId"
-            type="text"
-            placeholder="Enter Student ID"
-            class="flex-1 rounded-lg border border-emerald-700/40 bg-black/40 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-emerald-500"
-          />
-          <button
-            @click="lookupStatus"
-            :disabled="!statusLookupId"
-            class="rounded-lg bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-600 disabled:opacity-40 transition"
-          >
-            Search
-          </button>
-        </div>
-        <div v-if="statusResult" class="text-sm">
-          <p v-if="statusResult.active_token" class="text-emerald-200">
-            <span class="font-bold text-white">{{ statusResult.active_token.token_number }}</span> —
-            <span class="capitalize">{{ statusResult.active_token.status.replace('_', ' ') }}</span>
-            <span v-if="statusResult.position_in_queue"> · {{ statusResult.position_in_queue === 1 ? "You're next!" : `${statusResult.position_in_queue}${ordinalSuffix(statusResult.position_in_queue)} in line` }}</span>
-          </p>
-          <p v-else class="text-slate-400">No active queue token found for today.</p>
-        </div>
-      </div>
-    </div>
-  </div>
+  </main>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { portalApi } from '../../services/api';
-import type { QueueToken, QueueStatusResponse } from '../../types';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { ApiRequestError, portalApi } from '../../services/api';
+import type { QueueToken } from '../../types';
 
+const studentInput = ref<HTMLInputElement | null>(null);
 const studentId = ref('');
+const formattedStudentId = computed(() => studentId.value.length === 0
+  ? ''
+  : `${studentId.value.slice(0, 4)}${studentId.value.length > 4 ? `-${studentId.value.slice(4)}` : ''}`);
+const keypadKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+const studentIdMaxLength = 20;
 const isLoading = ref(false);
-const result = ref<{ success: boolean; message: string; token?: QueueToken; already_checked_in?: boolean } | null>(null);
-const showStatusLookup = ref(false);
-const statusLookupId = ref('');
-const statusResult = ref<QueueStatusResponse | null>(null);
+const result = ref<{ success: boolean; message: string; token?: QueueToken } | null>(null);
+let resetTimer: ReturnType<typeof setTimeout> | undefined;
 
-const numpadKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'CLR', '0', 'DEL'];
+function appendDigit(digit: string) {
+  if (studentId.value.length < studentIdMaxLength) studentId.value += digit;
+}
 
-function onKeyPress(key: string) {
-  if (key === 'CLR') {
-    studentId.value = '';
-  } else if (key === 'DEL') {
-    studentId.value = studentId.value.slice(0, -1);
-  } else if (studentId.value.length < 20) {
-    studentId.value += key;
+function deleteDigit() {
+  studentId.value = studentId.value.slice(0, -1);
+}
 
-    // Auto-insert dash after 4 digits for student ID format (e.g., 2023-1042)
-    if (studentId.value.length === 4 && !studentId.value.includes('-')) {
-      studentId.value += '-';
-    }
-  }
+function clearId() {
+  studentId.value = '';
 }
 
 async function submitCheckin() {
-  if (!studentId.value || isLoading.value) return;
+  if (!studentId.value.trim() || isLoading.value) return;
   isLoading.value = true;
   try {
-    const res = await portalApi.kioskCheckin(studentId.value);
-    result.value = res;
-  } catch (err: any) {
-    result.value = { success: false, message: err.message || 'Check-in failed. Please try again.' };
+    result.value = await portalApi.kioskCheckin(formattedStudentId.value);
+    resetTimer = setTimeout(resetForm, result.value.success ? 8000 : 5000);
+  } catch (error) {
+    result.value = { success: false, message: error instanceof ApiRequestError || error instanceof Error ? error.message : 'Check-in failed. Please try again.' };
+    resetTimer = setTimeout(resetForm, 5000);
   } finally {
     isLoading.value = false;
   }
 }
 
 function resetForm() {
-  studentId.value = '';
+  if (resetTimer) clearTimeout(resetTimer);
+  resetTimer = undefined;
   result.value = null;
+  studentId.value = '';
+  void nextTick(() => studentInput.value?.focus());
 }
 
-async function lookupStatus() {
-  if (!statusLookupId.value) return;
-  try {
-    const res = await portalApi.getQueueStatus(statusLookupId.value);
-    statusResult.value = res;
-  } catch {
-    statusResult.value = null;
-  }
-}
-
-function ordinalSuffix(n: number): string {
-  const s = ['th', 'st', 'nd', 'rd'];
-  const v = n % 100;
-  return (s[(v - 20) % 10] || s[v] || s[0]);
-}
+onMounted(() => studentInput.value?.focus());
+onBeforeUnmount(() => { if (resetTimer) clearTimeout(resetTimer); });
 </script>
