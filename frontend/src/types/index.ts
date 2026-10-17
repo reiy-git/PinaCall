@@ -5,6 +5,7 @@ export type ClearanceStatus = 'pending' | 'cleared';
 export type DocRequestStatus = 'submitted' | 'processing' | 'ready_for_pickup' | 'released' | 'rejected';
 
 export interface User {
+  must_change_password: boolean;
   id: number;
   name: string;
   email: string;
@@ -13,6 +14,15 @@ export interface User {
   is_active?: boolean;
   student?: Student;
   applications?: StudentApplication[];
+  approved_admission?: {
+    reference: string;
+    status: 'APPROVED';
+    program: string;
+    student_type: StudentType;
+    year_level: number;
+    previous_school: string | null;
+    reviewed_at: string | null;
+  } | null;
 }
 
 export interface Student {
