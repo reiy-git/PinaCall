@@ -1,19 +1,18 @@
 <template>
   <div class="space-y-6">
-    <a href="/admin/enrollees" class="mb-4 inline-block rounded-xl bg-emerald-900 px-4 py-3 font-bold text-white">Review guest enrollment applications</a>
     <!-- Header Banner -->
-    <div class="bg-gradient-to-r from-[#09090b] via-[#022c22] to-[#064e3b] rounded-2xl p-6 text-white shadow-2xl border border-emerald-900/60">
+    <div class="bg-gradient-to-r from-[#161f3d] via-[#1b2750] to-[#2a3b6f] rounded-3xl p-6 text-white shadow-lg border border-emerald-900/60">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div class="text-emerald-400 text-xs font-extrabold uppercase tracking-wider mb-1">
+          <div class="text-emerald-400 text-xs font-bold uppercase tracking-wider mb-1">
             PINACALL System Administration
           </div>
-          <h2 class="text-2xl font-black tracking-tight text-white">Executive Control & System Analytics Center</h2>
+          <h2 class="text-2xl font-bold tracking-tight text-white">Executive Control & System Analytics Center</h2>
           <p class="text-xs text-slate-300 mt-1">Cross-departmental monitoring, user role management, system health, and institutional metrics.</p>
         </div>
         <button
           @click="loadData"
-          class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs rounded-xl border border-white/20 transition"
+          class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs rounded-2xl border border-white/20 transition"
         >
           Refresh Analytics
         </button>
@@ -21,21 +20,21 @@
 
       <!-- Top Level Analytics Grid -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-emerald-800/30">
-        <div class="bg-black/30 rounded-xl p-3 border border-emerald-500/10">
-          <span class="text-[11px] text-emerald-300/80 uppercase tracking-wider font-semibold">Total Students</span>
-          <p class="text-2xl font-black text-white mt-0.5">{{ stats?.total_students ?? '—' }}</p>
+        <div class="bg-black/30 rounded-2xl p-3 border border-emerald-500/10">
+          <span class="text-xs text-emerald-300/80 uppercase tracking-wider font-semibold">Total Students</span>
+          <p class="text-2xl font-bold text-white mt-0.5">{{ stats?.total_students ?? '—' }}</p>
         </div>
-        <div class="bg-black/30 rounded-xl p-3 border border-emerald-500/10">
-          <span class="text-[11px] text-emerald-300/80 uppercase tracking-wider font-semibold">Pending Admissions</span>
-          <p class="text-2xl font-black text-amber-300 mt-0.5">{{ stats?.pending_applications ?? '—' }}</p>
+        <div class="bg-black/30 rounded-2xl p-3 border border-emerald-500/10">
+          <span class="text-xs text-emerald-300/80 uppercase tracking-wider font-semibold">Pending Admissions</span>
+          <p class="text-2xl font-bold text-amber-300 mt-0.5">{{ stats?.pending_applications ?? '—' }}</p>
         </div>
-        <div class="bg-black/30 rounded-xl p-3 border border-emerald-500/10">
-          <span class="text-[11px] text-emerald-300/80 uppercase tracking-wider font-semibold">Cleared Students</span>
-          <p class="text-2xl font-black text-emerald-300 mt-0.5">{{ stats?.cleared_students ?? '—' }}</p>
+        <div class="bg-black/30 rounded-2xl p-3 border border-emerald-500/10">
+          <span class="text-xs text-emerald-300/80 uppercase tracking-wider font-semibold">Cleared Students</span>
+          <p class="text-2xl font-bold text-emerald-300 mt-0.5">{{ stats?.cleared_students ?? '—' }}</p>
         </div>
-        <div class="bg-black/30 rounded-xl p-3 border border-emerald-500/10">
-          <span class="text-[11px] text-emerald-300/80 uppercase tracking-wider font-semibold">Document Volume</span>
-          <p class="text-2xl font-black text-teal-300 mt-0.5">{{ stats?.pending_documents ?? '—' }}<span v-if="stats"> Active</span></p>
+        <div class="bg-black/30 rounded-2xl p-3 border border-emerald-500/10">
+          <span class="text-xs text-emerald-300/80 uppercase tracking-wider font-semibold">Document Volume</span>
+          <p class="text-2xl font-bold text-teal-300 mt-0.5">{{ stats?.pending_documents ?? '—' }}<span v-if="stats"> Active</span></p>
         </div>
       </div>
     </div>
@@ -46,17 +45,17 @@
       <button type="button" @click="setSidebarSection('courses', 'admin')" class="rounded-lg px-3 py-2 text-sm font-semibold" :class="activeSidebarSection === 'courses' ? 'bg-emerald-900 text-white' : 'text-slate-700 hover:bg-slate-100'">Subject catalog</button>
     </nav>
 
-    <p v-if="loadError" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+    <p v-if="loadError" class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
       {{ loadError }}
     </p>
 
     <!-- Analytics Charts & Breakdown -->
     <div v-if="activeSidebarSection === 'analytics'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Enrollee Category Breakdown -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
         <h3 class="text-sm font-bold text-slate-900 mb-4 flex items-center justify-between">
           <span>Student Category Distribution</span>
-          <span class="text-[11px] text-slate-500 font-normal">Active Cohort</span>
+          <span class="text-xs text-slate-500 font-normal">Active Cohort</span>
         </h3>
 
         <div v-if="stats" class="space-y-3 text-xs">
@@ -78,34 +77,34 @@
       </div>
 
       <!-- Security & Architecture Compliance Card -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
         <h3 class="text-sm font-bold text-slate-900 mb-4 flex items-center justify-between">
           <span>Security & Compliance Checklist</span>
-          <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">Operational</span>
+          <span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-800">Operational</span>
         </h3>
 
         <div class="space-y-3 text-xs">
-          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-2.5">
+          <div class="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-start gap-2.5">
             <span class="text-emerald-600 font-bold">✓</span>
             <div>
               <p class="font-bold text-slate-900">SQL Injection Protection</p>
-              <p class="text-[11px] text-slate-500">Parameterized queries enforced via Laravel Eloquent ORM.</p>
+              <p class="text-xs text-slate-500">Parameterized queries enforced via Laravel Eloquent ORM.</p>
             </div>
           </div>
 
-          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-2.5">
+          <div class="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-start gap-2.5">
             <span class="text-emerald-600 font-bold">✓</span>
             <div>
               <p class="font-bold text-slate-900">Rate Limiting & Throttling</p>
-              <p class="text-[11px] text-slate-500">API endpoints protected against brute-force attacks.</p>
+              <p class="text-xs text-slate-500">API endpoints protected against brute-force attacks.</p>
             </div>
           </div>
 
-          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-2.5">
+          <div class="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-start gap-2.5">
             <span class="text-emerald-600 font-bold">✓</span>
             <div>
               <p class="font-bold text-slate-900">Role-Based Access Control</p>
-              <p class="text-[11px] text-slate-500">Strict separation of student, registrar, cashier, and dean scopes.</p>
+              <p class="text-xs text-slate-500">Strict separation of student, registrar, cashier, and dean scopes.</p>
             </div>
           </div>
         </div>
@@ -114,7 +113,7 @@
     </div>
 
     <!-- User Accounts Registry -->
-    <div v-if="activeSidebarSection === 'users'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div v-if="activeSidebarSection === 'users'" class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
       <div class="p-4 border-b border-slate-100 flex items-center justify-between">
         <h3 class="text-sm font-bold text-slate-900">Institutional User Accounts Master Registry</h3>
         <div class="flex items-center gap-3">
@@ -126,7 +125,7 @@
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
           <thead>
-            <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
               <th class="py-3.5 px-4">User Name</th>
               <th class="py-3.5 px-4">Institutional Email</th>
               <th class="py-3.5 px-4">Assigned Role</th>
@@ -141,7 +140,7 @@
               <td class="py-3.5 px-4 text-slate-600 font-mono">{{ user.email }}</td>
               <td class="py-3.5 px-4">
                 <span
-                  class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase"
+                  class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase"
                   :class="formatRoleBadgeClass(user.role)"
                 >
                   {{ user.role }}
@@ -161,7 +160,7 @@
       </div>
     </div>
 
-    <section v-if="activeSidebarSection === 'courses'" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section v-if="activeSidebarSection === 'courses'" class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-4">
         <div><h3 class="text-sm font-bold text-slate-900">Subject catalog</h3><p class="mt-1 text-xs text-slate-500">Maintain approved subjects used when departments create section offerings.</p></div>
         <button type="button" class="rounded-lg bg-emerald-900 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-950" @click="openCourse()">Add subject</button>
