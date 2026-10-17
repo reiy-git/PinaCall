@@ -14,14 +14,12 @@ import { resetPortalPage } from './navigation';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
-export class ApiRequestError extends Error {
+class ApiRequestError extends Error {
   readonly status: number;
-  readonly errors: Record<string, string[]>;
 
-  constructor(message: string, status: number, errors: Record<string, string[]> = {}) {
+  constructor(message: string, status: number) {
     super(message);
     this.status = status;
-    this.errors = errors;
     this.name = 'ApiRequestError';
   }
 }
@@ -66,12 +64,12 @@ export function showToast(type: 'success' | 'error' | 'info' | 'warning', title:
 }
 
 // Shared API fetch with explicit errors
-async function apiFetch<T>(endpoint: string, options: RequestInit = {}, preserveView = false): Promise<T> {
+async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   try {
     const res = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers: {
-        ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+        'Content-Type': 'application/json',
         Accept: 'application/json',
         ...(authState.token ? { Authorization: `Bearer ${authState.token}` } : {}),
         ...(options.headers || {}),
@@ -81,9 +79,8 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}, preserve
     if (!res.ok) {
       if (res.status === 422 && data.errors) {
         const firstError = Object.values(data.errors).flat()[0];
-        throw new ApiRequestError(typeof firstError === 'string' ? firstError : data.message || 'Please check the information and try again.', res.status, data.errors);
+        throw new Error(typeof firstError === 'string' ? firstError : data.message || 'Please check the information and try again.');
       }
-      if (data.code === 'PASSWORD_CHANGE_REQUIRED') window.location.assign('/set-password');
       throw new ApiRequestError(data.message || `Request failed (${res.status}).`, res.status);
     }
     authState.isLiveApi = true;
@@ -91,7 +88,7 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}, preserve
     return data;
   } catch (err) {
     authState.isLiveApi = false;
-    if (!preserveView && (err instanceof TypeError || (err instanceof ApiRequestError && err.status >= 500))) authState.serviceUnavailable = true;
+    if (err instanceof TypeError || (err instanceof ApiRequestError && err.status >= 500)) authState.serviceUnavailable = true;
     console.warn(`PINACALL request to ${endpoint} failed:`, err);
     throw err;
   }
@@ -110,7 +107,6 @@ export const portalApi = {
     try {
       const res = await apiFetch<{ success: boolean; user: User }>('/auth/me');
       authState.user = res.user;
-      if (res.user.must_change_password) window.history.replaceState({}, '', '/set-password');
       resetPortalPage(res.user.role);
     } catch (error) {
       if (error instanceof TypeError || (error instanceof ApiRequestError && error.status >= 500)) {
@@ -132,7 +128,6 @@ export const portalApi = {
       authState.token = res.access_token;
       sessionStorage.setItem('pinacall_access_token', res.access_token);
       authState.user = res.user;
-      if (res.user.must_change_password) window.history.replaceState({}, '', '/set-password');
       resetPortalPage(res.user.role);
       authState.isLiveApi = true;
       showToast('success', 'Logged In', `Welcome back, ${res.user.name}`);
@@ -156,32 +151,17 @@ export const portalApi = {
     showToast('info', 'Signed Out', 'You have been logged out of the portal.');
   },
 
-  async getEnrollmentOptions(): Promise<{ programs: string[]; document_guidance: string }> {
-    return apiFetch('/enrollees/options', {}, true);
-  },
-  async applyEnrollee(payload: FormData): Promise<{ reference: string }> {
-    return apiFetch('/enrollees/apply', { method: 'POST', body: payload }, true);
-  },
-  async getEnrollees(status: string, page = 1): Promise<EnrolleePage> {
-    return apiFetch(`/admin/enrollees?status=${encodeURIComponent(status)}&page=${page}`);
-  },
-  async decideEnrollee(id: number, decision: 'approve' | 'reject' | 'resend', remarks = '') {
-    return apiFetch(`/admin/enrollees/${id}/${decision}`, { method: 'POST', body: JSON.stringify({ remarks }) });
-  },
-  async downloadEnrolleeDocument(id: number, index: number) {
-    const response = await fetch(`${API_BASE_URL}/admin/enrollees/${id}/documents/${index}`, {
-      headers: { Authorization: `Bearer ${authState.token}` },
+  async register(payload: { name: string; email: string; password: string; student_type: string; course_program: string; year_level: number }): Promise<User> {
+    const res = await apiFetch<{ success: boolean; user: User; access_token: string }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
-    if (!response.ok) throw new Error('Document download failed.');
-    const url = URL.createObjectURL(await response.blob());
-    const link = document.createElement('a'); link.href = url; link.download = 'application-document'; link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  },
-  async firstLoginReset(payload: { current_password: string; password: string; password_confirmation: string }) {
-    await apiFetch('/auth/first-login-reset', { method: 'POST', body: JSON.stringify(payload) });
-    authState.token = null; authState.user = null;
-    sessionStorage.removeItem('pinacall_access_token');
-    window.location.assign('/');
+    authState.token = res.access_token;
+    sessionStorage.setItem('pinacall_access_token', res.access_token);
+    authState.user = res.user;
+    resetPortalPage(res.user.role);
+    showToast('success', 'Registration received', 'Your PINACALL profile was created. Complete your enrollment application next.');
+    return res.user;
   },
 
   // Applications
@@ -423,11 +403,3 @@ export const portalApi = {
     return res.stats;
   },
 };
-
-export interface Enrollee {
-  id: number; reference: string; name: string; email: string; contact_number: string;
-  program: string; year_level: number; student_type: string; educational_background: string; previous_school?: string | null;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED'; remarks: string | null;
-  documents: { name: string; index: number }[]; email_sent_at: string | null;
-}
-export interface EnrolleePage { data: Enrollee[]; current_page: number; last_page: number; total: number }
