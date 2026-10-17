@@ -1,2 +1,273 @@
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource-variable/jetbrains-mono";
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+  PinaCall design tokens
+  Palette: #2a3b6f navy (primary) · #f5543d coral · #c3eb4d lime (accent)
+           #edeef2 mist (canvas) · #869eb7 / #b7c3d2 steel · #d7cd9b sand · #d5988a clay
+  Existing utilities (emerald/slate/red/amber/blue/purple/orange) are re-mapped to
+  this palette so every component inherits it without per-file colour edits.
+*/
+@theme {
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, monospace;
+
+  /* Brand tokens */
+  --color-navy: #2a3b6f;
+  --color-coral: #f5543d;
+  --color-lime: #c3eb4d;
+  --color-mist: #edeef2;
+  --color-steel: #869eb7;
+  --color-fog: #b7c3d2;
+  --color-sand: #d7cd9b;
+  --color-clay: #d5988a;
+
+  /* Type scale (reference layout: 28 / 20 / 14 / 12) */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.25rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.375rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.75rem;
+  --text-2xl--line-height: 2.25rem;
+  --text-3xl: 2rem;
+  --text-4xl: 2.5rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.5rem;
+
+  /* emerald → navy (dark) with lime on 300/400 for accents on dark surfaces */
+  --color-emerald-50: #f3f4f8;
+  --color-emerald-100: #e3e6ef;
+  --color-emerald-200: #c9d0e2;
+  --color-emerald-300: #c3eb4d;
+  --color-emerald-400: #c3eb4d;
+  --color-emerald-500: #a6cf2b;
+  --color-emerald-600: #3b4f8f;
+  --color-emerald-700: #34457f;
+  --color-emerald-800: #2a3b6f;
+  --color-emerald-900: #222f5a;
+  --color-emerald-950: #161f3d;
+  --color-teal-300: #c3eb4d;
+  --color-teal-500: #a6cf2b;
+  --color-teal-700: #34457f;
+
+  /* slate → blue-grey from steel / fog / mist */
+  --color-slate-50: #f6f7fa;
+  --color-slate-100: #edeef2;
+  --color-slate-200: #dde1e9;
+  --color-slate-300: #b7c3d2;
+  --color-slate-400: #869eb7;
+  --color-slate-500: #667d97;
+  --color-slate-600: #4f6280;
+  --color-slate-700: #3b4a68;
+  --color-slate-800: #252f4d;
+  --color-slate-900: #1a2342;
+  --color-slate-950: #111731;
+  --color-zinc-950: #111731;
+
+  /* blue → navy family */
+  --color-blue-50: #f3f4f8;
+  --color-blue-100: #e3e6ef;
+  --color-blue-500: #4a62a6;
+  --color-blue-600: #2a3b6f;
+  --color-blue-800: #222f5a;
+  --color-blue-900: #1a2446;
+  --color-blue-950: #111731;
+
+  /* red → coral */
+  --color-red-50: #fff2ef;
+  --color-red-100: #ffe1dc;
+  --color-red-200: #fcc5bb;
+  --color-red-300: #f9a395;
+  --color-red-500: #f5543d;
+  --color-red-600: #e23f28;
+  --color-red-700: #c33420;
+  --color-red-800: #9c2918;
+  --color-red-950: #4a130b;
+
+  /* amber → sand */
+  --color-amber-50: #faf8ee;
+  --color-amber-100: #f1edd3;
+  --color-amber-200: #e7e0b8;
+  --color-amber-300: #d7cd9b;
+  --color-amber-400: #c6ba78;
+  --color-amber-500: #ac9f58;
+  --color-amber-600: #8c7f40;
+  --color-amber-700: #706534;
+  --color-amber-800: #574d29;
+  --color-amber-950: #2c2713;
+
+  /* purple / orange → clay */
+  --color-purple-50: #fbf1ee;
+  --color-purple-100: #f5e2dd;
+  --color-purple-200: #ecc9c0;
+  --color-purple-600: #b46e5d;
+  --color-purple-700: #965646;
+  --color-purple-800: #7a4437;
+  --color-orange-100: #f8e3dc;
+  --color-orange-500: #e0735c;
+  --color-orange-600: #c95c45;
+  --color-orange-800: #8f3c2a;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  :root {
+    /* Sky canvas shared with the landing scene (without the animated campus) */
+    --sky-top: #bcd8ee;
+    --sky-bot: #edeef2;
+  }
+  body {
+    background: var(--color-mist);
+    background-image: linear-gradient(to bottom, var(--sky-top), var(--sky-bot) 75%);
+    background-attachment: fixed;
+    color: var(--color-slate-900);
+    font-size: 0.875rem;
+    line-height: 1.375rem;
+  }
+  h1, h2, h3, h4 { letter-spacing: -0.015em; }
+  ::selection { background: var(--color-lime); color: var(--color-navy); }
+  :focus-visible { outline: 2px solid var(--color-lime); outline-offset: 2px; }
+}
+
+@layer components {
+  /* Reference-layout building blocks */
+  .page-title { @apply text-2xl font-bold tracking-tight text-slate-900; }
+  .card { @apply rounded-3xl bg-white p-6 shadow-xl shadow-slate-900/5 ring-1 ring-slate-900/5; }
+  /* Floating-card elevation for every large white panel, matching the sign-in card */
+  .bg-white.rounded-3xl { box-shadow: 0 18px 40px -22px rgb(26 35 66 / .28), 0 2px 6px -2px rgb(26 35 66 / .06); }
+  .eyebrow { @apply text-xs font-semibold uppercase tracking-wider; }
+}
+
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
+/* ---------- Dark mode ----------
+   Re-maps the same tokens, so every existing utility flips automatically.
+   slate-950 is intentionally unchanged (used as ink on lime and as modal scrim). */
+.dark {
+  color-scheme: dark;
+  --sky-top: #131416;
+  --sky-bot: #1e1f22;
+  --surface: #2b2d31;
+  --surface-hover: #35373c;
+  --color-mist: #1e1f22;
+  --color-slate-950: #111214;
+  --color-zinc-950: #111214;
+
+  --color-slate-50: #313338;
+  --color-slate-100: #35373c;
+  --color-slate-200: #3f4147;
+  --color-slate-300: #4e5058;
+  --color-slate-400: #80848e;
+  --color-slate-500: #949ba4;
+  --color-slate-600: #b5bac1;
+  --color-slate-700: #dbdee1;
+  --color-slate-800: #f2f3f5;
+  --color-slate-900: #f2f3f5;
+
+  --color-emerald-50: #313338;
+  --color-emerald-100: #35373c;
+  --color-emerald-200: #3f4147;
+  --color-emerald-500: #a6cf2b;
+  --color-emerald-600: #7189dc;
+  --color-emerald-700: #7189dc;
+  --color-emerald-800: #7189dc;
+  --color-emerald-900: #5f78d0;
+  --color-emerald-950: #aebdf0;
+
+  --color-blue-50: #313338;
+  --color-blue-100: #35373c;
+  --color-blue-500: #7189dc;
+  --color-blue-600: #5f78d0;
+  --color-blue-800: #b3c1f2;
+  --color-blue-900: #c6d1f6;
+
+  --color-red-50: #3a1914;
+  --color-red-100: #4a201a;
+  --color-red-200: #6b2c22;
+  --color-red-300: #f9a395;
+  --color-red-700: #ff9a88;
+  --color-red-800: #ffb0a2;
+
+  --color-amber-50: #2a2713;
+  --color-amber-100: #38331a;
+  --color-amber-200: #4d4623;
+  --color-amber-300: #d7cd9b;
+  --color-amber-700: #d7cd9b;
+  --color-amber-800: #e7e0b8;
+
+  --color-purple-50: #34201c;
+  --color-purple-100: #432a24;
+  --color-purple-200: #5b392f;
+  --color-purple-700: #ecc9c0;
+  --color-purple-800: #f5e2dd;
+  --color-orange-100: #432a24;
+  --color-orange-800: #f5cdc2;
+}
+.dark .bg-white { background-color: var(--surface); }
+.dark .bg-white\/90 { background-color: color-mix(in srgb, var(--surface) 90%, transparent); }
+.dark .border-white { border-color: var(--surface); }
+.dark .hover\:bg-white:hover,
+.dark .group:hover .group-hover\:bg-white { background-color: var(--surface-hover); }
+.dark .bg-white\/80 { background-color: color-mix(in srgb, var(--surface) 80%, transparent); }
+.dark input, .dark select, .dark textarea { color-scheme: dark; }
+
+/* Always-dark surfaces (banners, hero cards) keep light-mode tokens so their text stays readable */
+.dark [class*="bg-gradient-to-"],
+.dark .bg-slate-950 {
+  --color-slate-50: #f6f7fa;
+  --color-slate-100: #edeef2;
+  --color-slate-200: #dde1e9;
+  --color-slate-300: #b7c3d2;
+  --color-slate-400: #869eb7;
+  --color-slate-500: #667d97;
+  --color-slate-600: #4f6280;
+  --color-slate-700: #3b4a68;
+  --color-slate-800: #252f4d;
+  --color-slate-900: #1a2342;
+  --color-emerald-50: #f3f4f8;
+  --color-emerald-100: #e3e6ef;
+  --color-emerald-200: #c9d0e2;
+  --color-emerald-500: #a6cf2b;
+  --color-emerald-600: #3b4f8f;
+  --color-emerald-700: #34457f;
+  --color-emerald-800: #2a3b6f;
+  --color-emerald-900: #222f5a;
+  --color-emerald-950: #161f3d;
+  --color-blue-50: #f3f4f8;
+  --color-blue-100: #e3e6ef;
+  --color-blue-500: #4a62a6;
+  --color-blue-600: #2a3b6f;
+  --color-blue-800: #222f5a;
+  --color-blue-900: #1a2446;
+  --color-red-50: #fff2ef;
+  --color-red-100: #ffe1dc;
+  --color-red-200: #fcc5bb;
+  --color-red-300: #f9a395;
+  --color-red-700: #c33420;
+  --color-red-800: #9c2918;
+  --color-amber-50: #faf8ee;
+  --color-amber-100: #f1edd3;
+  --color-amber-200: #e7e0b8;
+  --color-amber-300: #d7cd9b;
+  --color-amber-700: #706534;
+  --color-amber-800: #574d29;
+  --color-purple-50: #fbf1ee;
+  --color-purple-100: #f5e2dd;
+  --color-purple-200: #ecc9c0;
+  --color-purple-700: #965646;
+  --color-purple-800: #7a4437;
+  --color-orange-100: #f8e3dc;
+  --color-orange-800: #8f3c2a;
+}

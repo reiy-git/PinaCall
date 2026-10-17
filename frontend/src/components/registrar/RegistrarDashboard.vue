@@ -1,18 +1,17 @@
 <template>
   <div class="space-y-6">
-    <a href="/admin/enrollees" class="mb-4 inline-block rounded-xl bg-emerald-900 px-4 py-3 font-bold text-white">Review guest enrollment applications</a>
     <!-- Header Banner -->
-    <div class="bg-gradient-to-r from-[#09090b] via-[#022c22] to-[#064e3b] rounded-2xl p-6 text-white shadow-2xl border border-emerald-800/40">
+    <div class="bg-gradient-to-r from-[#161f3d] via-[#1b2750] to-[#2a3b6f] rounded-3xl p-6 text-white shadow-lg border border-emerald-800/40">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div class="text-emerald-400 text-xs font-extrabold uppercase tracking-wider mb-1">Office of the University Registrar</div>
-          <h2 class="text-2xl font-black tracking-tight text-white">Admissions & Academic Records Command Center</h2>
+          <div class="text-emerald-400 text-xs font-bold uppercase tracking-wider mb-1">Office of the University Registrar</div>
+          <h2 class="text-2xl font-bold tracking-tight text-white">Admissions & Academic Records Command Center</h2>
           <p class="text-xs text-slate-300 mt-1">Manage student enrollment applications, evaluate transfer credentials, and fulfill document requests.</p>
         </div>
         <div class="flex items-center gap-3">
           <button
             @click="loadData"
-            class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs rounded-xl border border-white/20 transition"
+            class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs rounded-2xl border border-white/20 transition"
           >
             Refresh Queue
           </button>
@@ -21,21 +20,21 @@
 
       <!-- Metric KPI Counter Cards -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-emerald-800/30">
-        <div class="bg-black/30 rounded-xl p-3 border border-emerald-500/10">
-          <span class="text-[11px] text-emerald-300/80 uppercase tracking-wider font-semibold">Pending Applications</span>
-          <p class="text-2xl font-black text-amber-300 mt-0.5">{{ pendingAppsCount }}</p>
+        <div class="bg-black/30 rounded-2xl p-3 border border-emerald-500/10">
+          <span class="text-xs text-emerald-300/80 uppercase tracking-wider font-semibold">Pending Applications</span>
+          <p class="text-2xl font-bold text-amber-300 mt-0.5">{{ pendingAppsCount }}</p>
         </div>
-        <div class="bg-black/30 rounded-xl p-3 border border-emerald-500/10">
-          <span class="text-[11px] text-emerald-300/80 uppercase tracking-wider font-semibold">Total Approved</span>
-          <p class="text-2xl font-black text-emerald-300 mt-0.5">{{ approvedAppsCount }}</p>
+        <div class="bg-black/30 rounded-2xl p-3 border border-emerald-500/10">
+          <span class="text-xs text-emerald-300/80 uppercase tracking-wider font-semibold">Total Approved</span>
+          <p class="text-2xl font-bold text-emerald-300 mt-0.5">{{ approvedAppsCount }}</p>
         </div>
-        <div class="bg-black/30 rounded-xl p-3 border border-emerald-500/10">
-          <span class="text-[11px] text-emerald-300/80 uppercase tracking-wider font-semibold">Enrolled Students</span>
-          <p class="text-2xl font-black text-white mt-0.5">{{ studentsList.length }}</p>
+        <div class="bg-black/30 rounded-2xl p-3 border border-emerald-500/10">
+          <span class="text-xs text-emerald-300/80 uppercase tracking-wider font-semibold">Enrolled Students</span>
+          <p class="text-2xl font-bold text-white mt-0.5">{{ studentsList.length }}</p>
         </div>
-        <div class="bg-black/30 rounded-xl p-3 border border-emerald-500/10">
-          <span class="text-[11px] text-emerald-300/80 uppercase tracking-wider font-semibold">Pending Documents</span>
-          <p class="text-2xl font-black text-teal-300 mt-0.5">{{ pendingDocsCount }}</p>
+        <div class="bg-black/30 rounded-2xl p-3 border border-emerald-500/10">
+          <span class="text-xs text-emerald-300/80 uppercase tracking-wider font-semibold">Pending Documents</span>
+          <p class="text-2xl font-bold text-teal-300 mt-0.5">{{ pendingDocsCount }}</p>
         </div>
       </div>
     </div>
@@ -44,28 +43,28 @@
     <div class="flex items-center gap-2 border-b border-slate-200 pb-1 overflow-x-auto">
       <button
         @click="activeTab = 'applications'"
-        class="px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap"
-        :class="activeTab === 'applications' ? 'bg-[#064e3b] text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
+        class="px-4 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap"
+        :class="activeTab === 'applications' ? 'bg-[#2a3b6f] text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
       >
         <span>Enrollment Applications</span>
-        <span class="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-400 text-slate-950">{{ pendingAppsCount }}</span>
+        <span class="px-1.5 py-0.5 rounded-full text-xs font-bold bg-amber-400 text-slate-950">{{ pendingAppsCount }}</span>
       </button>
 
       <button
         @click="activeTab = 'students'"
-        class="px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap"
-        :class="activeTab === 'students' ? 'bg-[#064e3b] text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
+        class="px-4 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap"
+        :class="activeTab === 'students' ? 'bg-[#2a3b6f] text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
       >
         <span>Student Registry</span>
       </button>
 
       <button
         @click="activeTab = 'documents'"
-        class="px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap"
-        :class="activeTab === 'documents' ? 'bg-[#064e3b] text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
+        class="px-4 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap"
+        :class="activeTab === 'documents' ? 'bg-[#2a3b6f] text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
       >
         <span>Document Request Fulfillment</span>
-        <span class="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-400 text-slate-950">{{ pendingDocsCount }}</span>
+        <span class="px-1.5 py-0.5 rounded-full text-xs font-bold bg-emerald-400 text-slate-950">{{ pendingDocsCount }}</span>
       </button>
 
       <button
@@ -83,12 +82,12 @@
     <!-- TAB 1: APPLICATIONS QUEUE -->
     <div v-if="activeTab === 'applications'" class="space-y-4">
       <!-- Filters and Search Toolbar -->
-      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-2">
           <!-- Student Type Filter -->
           <select
             v-model="filterType"
-            class="text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+            class="text-xs bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
           >
             <option value="all">All Enrollee Categories</option>
             <option value="new">Freshman / New</option>
@@ -102,7 +101,7 @@
           <!-- Status Filter -->
           <select
             v-model="filterStatus"
-            class="text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-semibold text-slate-800 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+            class="text-xs bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 font-semibold text-slate-800 focus:ring-2 focus:ring-blue-600 focus:outline-none"
           >
             <option value="all">All Statuses</option>
             <option value="pending">Pending Evaluation</option>
@@ -117,18 +116,18 @@
             v-model="searchTerm"
             type="text"
             placeholder="Search student or school..."
-            class="w-full text-xs bg-slate-50 border border-slate-300 rounded-xl pl-8 pr-3.5 py-2 font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
+            class="w-full text-xs bg-slate-50 border border-slate-300 rounded-2xl pl-9 pr-3.5 py-2 font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
           />
-          <span class="absolute left-2.5 top-2.5 text-slate-400 text-xs" aria-hidden="true">Search</span>
+          <svg class="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
         </div>
       </div>
 
       <!-- Applications Data Table -->
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
-              <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
                 <th class="py-3.5 px-4">Applicant Name & Email</th>
                 <th class="py-3.5 px-4">Category</th>
                 <th class="py-3.5 px-4">Target Program</th>
@@ -141,11 +140,11 @@
               <tr v-for="app in filteredApplications" :key="app.id" class="hover:bg-slate-50/70 transition">
                 <td class="py-3.5 px-4">
                   <p class="font-bold text-slate-900">{{ app.user?.name || 'Applicant' }}</p>
-                  <p class="text-[11px] text-slate-500">{{ app.user?.email }}</p>
+                  <p class="text-xs text-slate-500">{{ app.user?.email }}</p>
                 </td>
                 <td class="py-3.5 px-4">
                   <span
-                    class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase"
+                    class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase"
                     :class="formatCategoryClass(app.student_type)"
                   >
                     {{ app.student_type }}
@@ -157,7 +156,7 @@
                 <td class="py-3.5 px-4 text-slate-600">{{ app.previous_school || 'N/A' }}</td>
                 <td class="py-3.5 px-4 text-center">
                   <span
-                    class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase"
+                    class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase"
                     :class="app.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : (app.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800')"
                   >
                     {{ app.status }}
@@ -166,7 +165,7 @@
                 <td class="py-3.5 px-4 text-right">
                   <button
                     @click="openReviewModal(app)"
-                    class="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-bold text-xs transition border border-emerald-300"
+                    class="px-3 py-1.5 rounded-2xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-bold text-xs transition border border-emerald-300"
                   >
                     Evaluate
                   </button>
@@ -184,7 +183,7 @@
     </div>
 
     <!-- TAB 2: STUDENT MASTERLIST -->
-    <div v-if="activeTab === 'students'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div v-if="activeTab === 'students'" class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
       <div class="p-4 border-b border-slate-100 flex items-center justify-between">
         <h3 class="text-sm font-bold text-slate-900">Enrolled Student Registry</h3>
         <span class="text-xs text-slate-500">{{ studentsList.length }} Registered Students</span>
@@ -192,7 +191,7 @@
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
           <thead>
-            <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
               <th class="py-3.5 px-4">Student ID</th>
               <th class="py-3.5 px-4">Student Name</th>
               <th class="py-3.5 px-4">Category</th>
@@ -206,7 +205,7 @@
               <td class="py-3.5 px-4 font-mono font-bold text-blue-900">{{ st.student_number }}</td>
               <td class="py-3.5 px-4 font-bold text-slate-900">{{ st.name }}</td>
               <td class="py-3.5 px-4">
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase" :class="formatCategoryClass(st.student_type)">
+                <span class="px-2 py-0.5 rounded-full text-xs font-bold uppercase" :class="formatCategoryClass(st.student_type)">
                   {{ st.student_type }}
                 </span>
               </td>
@@ -214,7 +213,7 @@
               <td class="py-3.5 px-4 text-center font-bold">Year {{ st.year_level }}</td>
               <td class="py-3.5 px-4 text-center">
                 <span
-                  class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
+                  class="px-2 py-0.5 rounded-full text-xs font-bold uppercase"
                   :class="st.clearance?.status === 'cleared' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
                 >
                   {{ st.clearance?.status === 'cleared' ? 'CLEARED' : 'PENDING' }}
@@ -227,7 +226,7 @@
     </div>
 
     <!-- TAB 3: DOCUMENT REQUEST FULFILLMENT -->
-    <div v-if="activeTab === 'documents'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div v-if="activeTab === 'documents'" class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
       <div class="p-4 border-b border-slate-100 flex items-center justify-between">
         <h3 class="text-sm font-bold text-slate-900">Official Document Fulfillment Queue</h3>
         <span class="text-xs text-slate-500">Release documents upon payment confirmation</span>
@@ -235,7 +234,7 @@
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
           <thead>
-            <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
               <th class="py-3.5 px-4">Student</th>
               <th class="py-3.5 px-4">Requested Document</th>
               <th class="py-3.5 px-4">Purpose</th>
@@ -250,12 +249,12 @@
               <td class="py-3.5 px-4 font-bold text-blue-900">{{ doc.document_type || doc.type }} (x{{ doc.copies }})</td>
               <td class="py-3.5 px-4 text-slate-600">{{ doc.purpose }}</td>
               <td class="py-3.5 px-4 text-center">
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase" :class="doc.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'">
+                <span class="px-2 py-0.5 rounded-full text-xs font-bold uppercase" :class="doc.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'">
                   {{ doc.payment_status }}
                 </span>
               </td>
               <td class="py-3.5 px-4 text-center">
-                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase" :class="formatDocStatusClass(doc.status)">
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase" :class="formatDocStatusClass(doc.status)">
                   {{ doc.status }}
                 </span>
               </td>
@@ -284,28 +283,28 @@
     <!-- Review Application Modal -->
     <Modal v-model="showReviewModal" title="Evaluate Enrollment Application" subtitle="Review applicant credentials and record registrar decision">
       <div v-if="selectedApp" class="space-y-4">
-        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-2 gap-3 text-xs">
+        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-2 gap-3 text-xs">
           <div>
-            <span class="text-slate-400 uppercase font-bold text-[10px]">Applicant Name</span>
+            <span class="text-slate-400 uppercase font-bold text-xs">Applicant Name</span>
             <p class="font-bold text-slate-900 mt-0.5">{{ selectedApp.user?.name }}</p>
           </div>
           <div>
-            <span class="text-slate-400 uppercase font-bold text-[10px]">Enrollee Category</span>
+            <span class="text-slate-400 uppercase font-bold text-xs">Enrollee Category</span>
             <p class="font-bold text-blue-900 mt-0.5 uppercase">{{ selectedApp.student_type }}</p>
           </div>
           <div>
-            <span class="text-slate-400 uppercase font-bold text-[10px]">Degree Program</span>
+            <span class="text-slate-400 uppercase font-bold text-xs">Degree Program</span>
             <p class="font-semibold text-slate-800 mt-0.5">{{ selectedApp.target_program }} (Year {{ selectedApp.year_level }})</p>
           </div>
           <div>
-            <span class="text-slate-400 uppercase font-bold text-[10px]">Previous School / Dept</span>
+            <span class="text-slate-400 uppercase font-bold text-xs">Previous School / Dept</span>
             <p class="font-semibold text-slate-800 mt-0.5">{{ selectedApp.previous_school }}</p>
           </div>
         </div>
 
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Educational Background & Credentials</label>
-          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700">
+          <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-700">
             {{ selectedApp.educational_background }}
           </div>
         </div>
@@ -315,7 +314,7 @@
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Assign Course Section</label>
             <select
               v-model="reviewForm.assigned_section_id"
-              class="w-full text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-semibold text-slate-800 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+              class="w-full text-xs bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 font-semibold text-slate-800 focus:ring-2 focus:ring-blue-600 focus:outline-none"
             >
               <option :value="null">Assign later</option>
               <option v-for="section in compatibleSections" :key="section.id" :value="section.id">
@@ -327,7 +326,7 @@
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Evaluation Decision</label>
             <select
               v-model="reviewForm.status"
-              class="w-full text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-800 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+              class="w-full text-xs bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 font-bold text-slate-800 focus:ring-2 focus:ring-blue-600 focus:outline-none"
             >
               <option value="approved">Approve Application</option>
               <option value="pending">Keep Pending / Hold</option>
@@ -342,7 +341,7 @@
             v-model="reviewForm.evaluation_notes"
             rows="3"
             placeholder="Enter notes on credentials, prerequisite waivers, or admissions requirements..."
-            class="w-full text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-medium text-slate-800 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+            class="w-full text-xs bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 font-medium text-slate-800 focus:ring-2 focus:ring-blue-600 focus:outline-none"
           ></textarea>
         </div>
 
@@ -350,14 +349,14 @@
           <button
             type="button"
             @click="showReviewModal = false"
-            class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+            class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-2xl transition"
           >
             Cancel
           </button>
           <button
             type="button"
             @click="saveApplicationReview"
-            class="px-5 py-2 text-xs font-bold bg-[#064e3b] hover:bg-[#022c22] text-white rounded-xl shadow transition"
+            class="px-5 py-2 text-xs font-bold bg-[#2a3b6f] hover:bg-[#1b2750] text-white rounded-2xl shadow transition"
           >
             Record Registrar Decision
           </button>
