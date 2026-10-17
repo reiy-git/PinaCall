@@ -57,10 +57,10 @@ import { computed } from 'vue';
 defineProps<{ standalone?: boolean }>();
 import ThemeToggle from './ThemeToggle.vue';
 import { authState, formatDisplayName, portalApi } from '../services/api';
-import { activeSidebarSection, isPortalPageAllowed, navItemsByRole, pageIcons, roleDisplayName, setSidebarSection, type PortalPage } from '../services/navigation';
+import { activeSidebarSection, isPortalPageAllowed, navItemsForUser, pageIcons, roleDisplayName, setSidebarSection, type PortalPage } from '../services/navigation';
 
 const displayName = computed(() => formatDisplayName(authState.user?.name));
-const items = computed(() => authState.user ? navItemsByRole[authState.user.role] : []);
+const items = computed(() => navItemsForUser(authState.user));
 
 function go(page: PortalPage) {
   if (authState.user && isPortalPageAllowed(authState.user.role, page)) setSidebarSection(page, authState.user.role);

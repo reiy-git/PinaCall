@@ -43,7 +43,7 @@
             @click="activeTab = 'enrollment'"
             class="px-4 py-2 bg-lime hover:brightness-95 text-navy font-bold text-xs rounded-2xl shadow transition flex items-center gap-2"
           >
-            Enrollment Application
+            {{ admission ? 'Subjects & sections' : 'Enrollment Application' }}
           </button>
           <button
             @click="activeTab = 'documents'"
@@ -97,12 +97,23 @@
     </div>
 
     <!-- Transparent enrollment progress rail: visible before every service workspace. -->
-    <div class="grid gap-3 rounded-3xl border border-emerald-100 bg-white p-4 shadow-sm sm:grid-cols-4">
+    <div v-if="!admission" class="grid gap-3 rounded-3xl border border-emerald-100 bg-white p-4 shadow-sm sm:grid-cols-4">
       <div v-for="(stage, index) in enrollmentStages" :key="stage.name" class="flex items-center gap-3" :class="index < 3 ? 'sm:border-r sm:border-slate-100 sm:pr-3' : ''">
         <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold" :class="index <= currentEnrollmentStage ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-400'">{{ index + 1 }}</span>
         <div><p class="text-xs font-bold text-slate-900">{{ stage.name }}</p><p class="text-xs text-slate-500">{{ stage.owner }}</p></div>
       </div>
     </div>
+
+    <section v-if="admission && ['overview', 'enrollment'].includes(activeTab)" class="rounded-3xl border border-emerald-200 bg-white p-6" aria-labelledby="admission-title">
+      <h3 id="admission-title" class="font-bold text-emerald-900">Admission approved</h3>
+      <p class="mt-2 text-sm">Your application has been reviewed. You do not need to submit your initial admission details or documents again.</p>
+      <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+        <div><dt class="text-slate-500">Application reference</dt><dd class="break-all font-semibold">{{ admission.reference }}</dd></div>
+        <div><dt class="text-slate-500">Program at admission</dt><dd>{{ admission.program }} / Year {{ admission.year_level }}</dd></div>
+      </dl>
+      <p class="mt-3 text-sm text-slate-600">Payment, clearance and subject enrollment have their own requirements and statuses. Use the services below to view your records and next steps.</p>
+      <button v-if="activeTab === 'enrollment' && !showContinuingApplication" type="button" class="mt-4 rounded-lg text-sm font-semibold text-emerald-800 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700" @click="openContinuingApplication">Continuing, returning or changing program? Open a student application</button>
+    </section>
 
     <!-- TAB 1: OVERVIEW -->
     <div v-if="activeTab === 'overview'" class="space-y-6">
@@ -117,7 +128,7 @@
           </div>
 
           <div class="space-y-3">
-            <div class="p-3.5 rounded-2xl border flex items-center justify-between bg-slate-50 border-slate-200">
+            <div v-if="!admission" class="p-3.5 rounded-2xl border flex items-center justify-between bg-slate-50 border-slate-200">
               <div class="flex items-center gap-3">
                 <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">1</span>
                 <div>
@@ -153,19 +164,17 @@
               <div class="flex items-center gap-3">
                 <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">3</span>
                 <div>
-                  <p class="text-xs font-bold text-slate-900">Subject Load Verification</p>
-                  <p class="text-xs text-slate-500">{{ studentGrades.length }} courses enrolled</p>
+                  <p class="text-xs font-bold text-slate-900">Subject enrollment</p>
+                  <p class="text-xs text-slate-500">View your subjects and sections for enrollment details.</p>
                 </div>
               </div>
-              <span class="text-xs font-bold px-2.5 py-1 rounded-full uppercase bg-emerald-100 text-emerald-800">
-                VERIFIED
-              </span>
+              <button type="button" class="text-xs font-bold text-emerald-800 underline" @click="activeTab = 'enrollment'">View sections</button>
             </div>
           </div>
         </div>
 
         <!-- Student Category Advising Notice -->
-        <div class="bg-gradient-to-br from-[#161f3d] to-[#1b2750] rounded-3xl p-6 text-white shadow-md border border-emerald-900/60 flex flex-col justify-between">
+        <div v-if="!admission" class="bg-gradient-to-br from-[#161f3d] to-[#1b2750] rounded-3xl p-6 text-white shadow-md border border-emerald-900/60 flex flex-col justify-between">
           <div>
             <div class="text-emerald-400 text-xs font-bold uppercase tracking-wider mb-2">
               Category Specific Advising
@@ -187,11 +196,11 @@
     </div>
 
     <!-- TAB 2: ENROLLMENT WIZARD -->
-    <div v-if="activeTab === 'enrollment'" class="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 space-y-6">
+    <div v-if="activeTab === 'enrollment' && (!admission || showContinuingApplication)" class="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 space-y-6">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
         <div>
-          <h3 class="text-lg font-bold text-slate-900">Enrollment Application System</h3>
-          <p class="text-xs text-slate-500 mt-0.5">Submit or review your admission and registration application for the upcoming term.</p>
+          <h3 class="text-lg font-bold text-slate-900">{{ admission ? 'Continuing-student application' : 'Enrollment Application System' }}</h3>
+          <p class="text-xs text-slate-500 mt-0.5">{{ admission ? 'Request continuing, returning or changing-program review. Your initial admission remains on record.' : 'Submit or review your admission and registration application for the upcoming term.' }}</p>
         </div>
         <div v-if="latestApplication" class="flex items-center gap-2">
           <span class="text-xs font-semibold text-slate-500">Status:</span>
@@ -228,8 +237,8 @@
               required
               class="w-full text-xs bg-slate-50 border border-slate-300 rounded-2xl px-3.5 py-2.5 font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
             >
-              <option value="new">Freshman / New Enrollee</option>
-              <option value="transferee">Transferee from Other Institution</option>
+              <option v-if="!admission" value="new">Freshman / New Enrollee</option>
+              <option v-if="!admission" value="transferee">Transferee from Other Institution</option>
               <option value="irregular">Irregular / Retake Student</option>
               <option value="old">Old / Continuing Regular Student</option>
               <option value="shiftee">Shiftee (Changing Degree Program)</option>
@@ -669,6 +678,12 @@ const latestApplication = ref<StudentApplication | null>(null);
 const clearance = ref<Clearance | null>(null);
 
 const student = computed(() => authState.user?.student);
+const admission = computed(() => authState.user?.approved_admission);
+const showContinuingApplication = ref(false);
+function openContinuingApplication() {
+  enrollmentForm.value.student_type = 'old';
+  showContinuingApplication.value = true;
+}
 
 const userInitials = computed(() => {
   const name = formatDisplayName(student.value?.name || authState.user?.name) || 'ST';
@@ -677,7 +692,7 @@ const userInitials = computed(() => {
 
 const tabs = computed<{ id: TabType; name: string; badge?: string }[]>(() => [
   { id: 'overview', name: 'Overview' },
-  { id: 'enrollment', name: 'Enrollment Application', badge: latestApplication.value?.status === 'pending' ? 'Pending' : '' },
+  { id: 'enrollment', name: admission.value ? 'Subjects & sections' : 'Enrollment Application', badge: latestApplication.value?.status === 'pending' ? 'Pending' : '' },
   { id: 'clearance', name: 'Clearance Tracker', badge: clearance.value?.status === 'pending' ? 'Action' : '' },
   { id: 'grades', name: 'Academic Grades' },
   { id: 'documents', name: 'Document Requests' },
@@ -767,7 +782,7 @@ async function loadStudentData() {
 }
 
 async function submitEnrollmentApp() {
-  if (!authState.user) return;
+  if (!authState.user || isSubmitting.value || (admission.value && !showContinuingApplication.value)) return;
   isSubmitting.value = true;
   try {
     const res = await portalApi.submitApplication({
@@ -775,6 +790,7 @@ async function submitEnrollmentApp() {
       ...enrollmentForm.value,
     });
     latestApplication.value = res;
+    showContinuingApplication.value = false;
     activeTab.value = 'overview';
   } catch (err) {
     console.error(err);

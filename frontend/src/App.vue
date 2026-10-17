@@ -5,14 +5,23 @@
 
     <div class="flex min-h-0 w-full flex-1 items-stretch">
       <!-- Sticky aside (desktop) -->
-      <Sidebar v-if="authState.user && !authState.serviceUnavailable && !routeError && !legalPage" />
+      <Sidebar v-if="authState.user && !authState.user.must_change_password && !authState.serviceUnavailable && !routeError && !legalPage" />
 
       <main class="min-w-0 flex-1 overflow-x-clip p-4 sm:p-6 lg:p-8">
         <LegalPage v-if="legalPage" :kind="legalPage" />
         <PortalErrorView v-else-if="authState.serviceUnavailable" kind="service-unavailable" @retry="retryConnection" />
         <PortalErrorView v-else-if="routeError" :kind="routeError" @home="goHome" @signout="portalApi.logout()" />
         <template v-else>
-          <div v-if="authState.user" class="mx-auto w-full max-w-[90rem]">
+          <div v-if="authState.user?.must_change_password" class="mx-auto w-full max-w-[90rem]"><SetPassword /></div>
+          <PublicEnrollment v-else-if="pathname === '/enroll' && !authState.user" />
+          <div v-else-if="pathname === '/admin/enrollees' && authState.user && ['registrar','admin'].includes(authState.user.role)" class="mx-auto w-full max-w-[90rem]">
+            <header class="mb-6">
+              <p class="text-sm text-slate-500">{{ greeting }}, {{ firstName }}</p>
+              <h1 class="page-title">{{ currentPageLabel }}</h1>
+            </header>
+            <EnrolleeReview />
+          </div>
+          <div v-else-if="authState.user" class="mx-auto w-full max-w-[90rem]">
             <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p class="text-sm text-slate-500">{{ greeting }}, {{ firstName }}</p>
@@ -33,14 +42,12 @@
             <CampusScene />
             <section
               class="relative z-10 mx-auto grid w-full max-w-[90rem] content-start gap-6 px-4 pt-4 pb-[16.5rem] sm:px-6 sm:pt-6 lg:grid-rows-[max(37rem,calc(100dvh-22.25rem))] lg:px-8 lg:pt-8 lg:transition-[grid-template-columns,column-gap] lg:duration-500 lg:ease-in-out motion-reduce:transition-none"
-              :class="authMode === 'register' ? 'lg:grid-cols-[minmax(0,0fr)_minmax(22rem,1fr)] lg:gap-x-0' : 'lg:grid-cols-[minmax(0,1.5fr)_minmax(22rem,0.7fr)]'"
+              :class="'lg:grid-cols-[minmax(0,1.5fr)_minmax(22rem,0.7fr)]'"
             >
             <!-- Services column: slides away while the new-student form takes the full width -->
             <div
               class="order-2 min-w-0 overflow-hidden lg:h-full transition-[opacity,translate,max-height] duration-500 ease-in-out motion-reduce:transition-none lg:order-1 lg:max-h-none"
-              :class="authMode === 'register' ? 'pointer-events-none max-h-0 -translate-x-8 opacity-0' : 'max-h-[70rem]'"
-              :inert="authMode === 'register'"
-              :aria-hidden="authMode === 'register'"
+              :class="'max-h-[70rem]'"
             >
               <div class="grid content-start gap-6 lg:h-full lg:min-w-[30rem] lg:grid-rows-[auto_minmax(0,1fr)]">
                 <div>
@@ -52,13 +59,13 @@
               </div>
             </div>
             <div class="order-1 min-w-0 lg:order-2">
-              <LoginModal v-model:mode="authMode" :model-value="true" inline />
+              <LoginModal :model-value="true" inline />
             </div>
             </section>
           </div>
 
           <!-- Disclaimer: its own full-width block, below the 100dvh portal section -->
-          <section v-if="!authState.user" class="mx-auto mt-6 w-full max-w-[90rem] rounded-3xl bg-white p-6 ring-1 ring-slate-900/5 sm:p-10 lg:mt-10" aria-labelledby="disclaimer-title">
+          <section v-if="!authState.user && pathname !== '/enroll'" class="mx-auto mt-6 w-full max-w-[90rem] rounded-3xl bg-white p-6 ring-1 ring-slate-900/5 sm:p-10 lg:mt-10" aria-labelledby="disclaimer-title">
             <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-12">
               <div class="min-w-0">
                 <div class="flex items-center gap-3">
@@ -98,7 +105,10 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
 import { authState, formatDisplayName, portalApi } from './services/api';
-import { activeSidebarSection, navItemsByRole } from './services/navigation';
+import { activeSidebarSection, navItemsForUser } from './services/navigation';
+import SetPassword from './components/auth/SetPassword.vue';
+import EnrolleeReview from './components/registrar/EnrolleeReview.vue';
+import PublicEnrollment from './components/enrollment/PublicEnrollment.vue';
 import Navbar from './components/Navbar.vue';
 import Sidebar from './components/Sidebar.vue';
 import SiteFooter from './components/SiteFooter.vue';
@@ -121,11 +131,11 @@ const greeting = computed(() => {
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
 });
 const currentPageLabel = computed(() => {
-  const role = authState.user?.role;
-  return (role && navItemsByRole[role].find((i) => i.page === activeSidebarSection.value)?.label) || 'Dashboard';
+  if (pathname === '/admin/enrollees') return 'Guest enrollment applications';
+  return navItemsForUser(authState.user).find((i) => i.page === activeSidebarSection.value)?.label || 'Dashboard';
 });
 
-const authMode = ref<'login' | 'register'>('login');
+const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
 const routeError = ref<'not-found' | 'forbidden' | null>(null);
 const legalPage = ref<'terms' | 'privacy' | null>(null);
 
@@ -137,12 +147,14 @@ function retryConnection() {
   window.location.reload();
 }
 
-onMounted(() => {
-  const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
+onMounted(async () => {
   if (pathname === '/terms') legalPage.value = 'terms';
   else if (pathname === '/privacy') legalPage.value = 'privacy';
+  await portalApi.restoreSession();
+  if (legalPage.value || authState.user?.must_change_password) return;
+  if (pathname === '/admin/enrollees' && !['registrar', 'admin'].includes(authState.user?.role || '')) routeError.value = 'forbidden';
+  else if (pathname === '/set-password') window.location.assign('/');
   else if (pathname === '/403' || pathname === '/forbidden') routeError.value = 'forbidden';
-  else if (pathname !== '/' && pathname !== '/index.html') routeError.value = 'not-found';
-  void portalApi.restoreSession();
+  else if (!['/', '/index.html', '/enroll', '/admin/enrollees'].includes(pathname)) routeError.value = 'not-found';
 });
 </script>
