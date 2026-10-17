@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\DocumentRequest;
+use App\Models\QueueToken;
 use App\Models\Student;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DocumentRequestController extends Controller
 {
@@ -140,12 +142,55 @@ class DocumentRequestController extends Controller
             $docRequest->remarks = $request->remarks;
         }
 
-        $docRequest->save();
+        DB::transaction(function () use ($docRequest, $request) {
+            $docRequest->save();
+
+            if ($request->status === 'ready_for_pickup') {
+                $this->ensureRegistrarToken($docRequest);
+            }
+
+            if ($request->status === 'released') {
+                QueueToken::where('document_request_id', $docRequest->id)
+                    ->where('service_stage', 'registrar')
+                    ->whereDate('queue_date', now()->toDateString())
+                    ->whereIn('status', ['waiting', 'serving'])
+                    ->update([
+                        'status' => 'completed',
+                        'completed_at' => now(),
+                    ]);
+            }
+        });
 
         return response()->json([
             'success' => true,
             'message' => 'Document request updated successfully.',
             'request' => $docRequest,
+        ]);
+    }
+
+    private function ensureRegistrarToken(DocumentRequest $docRequest): QueueToken
+    {
+        $existingToken = QueueToken::where('document_request_id', $docRequest->id)
+            ->where('service_stage', 'registrar')
+            ->whereDate('queue_date', now()->toDateString())
+            ->whereNotIn('status', ['completed', 'no_show', 'skipped'])
+            ->first();
+
+        if ($existingToken) {
+            return $existingToken;
+        }
+
+        $sequence = QueueToken::nextSequence('registrar');
+
+        return QueueToken::create([
+            'token_number' => QueueToken::generateTokenNumber('registrar', $sequence),
+            'daily_sequence' => $sequence,
+            'student_id' => $docRequest->student_id,
+            'document_request_id' => $docRequest->id,
+            'service_stage' => 'registrar',
+            'status' => 'waiting',
+            'queue_date' => now()->toDateString(),
+            'checked_in_at' => now(),
         ]);
     }
 }

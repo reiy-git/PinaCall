@@ -1,18 +1,20 @@
 <template>
-  <div class="flex min-h-screen flex-col font-sans text-slate-900 antialiased">
+  <div class="flex min-h-screen flex-col font-sans text-slate-900 antialiased" :class="{ 'bg-mist': isPublicQueuePage }">
     <!-- Top navbar: signed-out header, and the sticky tablet/mobile navbar when signed in -->
-    <Navbar :standalone="!!legalPage" />
+    <Navbar v-if="!isPublicQueuePage" :standalone="!!legalPage" />
 
     <div class="flex min-h-0 w-full flex-1 items-stretch">
       <!-- Sticky aside (desktop) -->
-      <Sidebar v-if="authState.user && !authState.serviceUnavailable && !routeError && !legalPage" />
+      <Sidebar v-if="!isPublicQueuePage && authState.user && !authState.serviceUnavailable && !routeError && !legalPage" />
 
-      <main class="min-w-0 flex-1 overflow-x-clip p-4 sm:p-6 lg:p-8">
+      <main class="min-w-0 flex-1 overflow-x-clip" :class="isPublicQueuePage ? '' : 'p-4 sm:p-6 lg:p-8'">
         <LegalPage v-if="legalPage" :kind="legalPage" />
         <PortalErrorView v-else-if="authState.serviceUnavailable" kind="service-unavailable" @retry="retryConnection" />
         <PortalErrorView v-else-if="routeError" :kind="routeError" @home="goHome" @signout="portalApi.logout()" />
         <template v-else>
-          <div v-if="authState.user" class="mx-auto w-full max-w-[90rem]">
+          <KioskCheckIn v-if="pathname === '/kiosk'" />
+          <LobbyDisplay v-else-if="pathname === '/queue-monitor'" />
+          <div v-else-if="authState.user" class="mx-auto w-full max-w-[90rem]">
             <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p class="text-sm text-slate-500">{{ greeting }}, {{ firstName }}</p>
@@ -58,7 +60,7 @@
           </div>
 
           <!-- Disclaimer: its own full-width block, below the 100dvh portal section -->
-          <section v-if="!authState.user" class="mx-auto mt-6 w-full max-w-[90rem] rounded-3xl bg-white p-6 ring-1 ring-slate-900/5 sm:p-10 lg:mt-10" aria-labelledby="disclaimer-title">
+          <section v-if="!authState.user && !isPublicQueuePage" class="mx-auto mt-6 w-full max-w-[90rem] rounded-3xl bg-white p-6 ring-1 ring-slate-900/5 sm:p-10 lg:mt-10" aria-labelledby="disclaimer-title">
             <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-12">
               <div class="min-w-0">
                 <div class="flex items-center gap-3">
@@ -87,11 +89,11 @@
             </div>
           </section>
         </template>
-        <SiteFooter />
+        <SiteFooter v-if="!isPublicQueuePage" />
       </main>
     </div>
 
-    <Toast />
+    <Toast v-if="!isPublicQueuePage" />
   </div>
 </template>
 
@@ -114,8 +116,12 @@ import CashierDashboard from './components/cashier/CashierDashboard.vue';
 import DeanDashboard from './components/dean/DeanDashboard.vue';
 import FacultyDashboard from './components/faculty/FacultyDashboard.vue';
 import AdminDashboard from './components/admin/AdminDashboard.vue';
+import KioskCheckIn from './components/queue/KioskCheckIn.vue';
+import LobbyDisplay from './components/queue/LobbyDisplay.vue';
 
+const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
 const firstName = computed(() => formatDisplayName(authState.user?.name).split(/\s+/)[0] || '');
+const isPublicQueuePage = pathname === '/kiosk' || pathname === '/queue-monitor';
 const greeting = computed(() => {
   const h = new Date().getHours();
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
@@ -138,11 +144,10 @@ function retryConnection() {
 }
 
 onMounted(() => {
-  const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
   if (pathname === '/terms') legalPage.value = 'terms';
   else if (pathname === '/privacy') legalPage.value = 'privacy';
   else if (pathname === '/403' || pathname === '/forbidden') routeError.value = 'forbidden';
-  else if (pathname !== '/' && pathname !== '/index.html') routeError.value = 'not-found';
+  else if (!['/', '/index.html', '/kiosk', '/queue-monitor'].includes(pathname)) routeError.value = 'not-found';
   void portalApi.restoreSession();
 });
 </script>

@@ -46,7 +46,7 @@ class QueueToken extends Model
     public static function nextSequence(string $stage = 'cashier'): int
     {
         $today = now()->toDateString();
-        $max = static::where('queue_date', $today)
+        $max = static::whereDate('queue_date', $today)
             ->where('service_stage', $stage)
             ->max('daily_sequence');
 
