@@ -1,18 +1,18 @@
 <template>
   <div class="space-y-6">
     <!-- Header Banner -->
-    <div class="bg-gradient-to-r from-[#09090b] via-[#064e3b] to-[#022c22] rounded-2xl p-6 text-white shadow-2xl border border-emerald-900/60">
+    <div class="bg-gradient-to-r from-[#161f3d] via-[#2a3b6f] to-[#1b2750] rounded-3xl p-6 text-white shadow-lg border border-emerald-900/60">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div class="text-emerald-400 text-xs font-extrabold uppercase tracking-wider mb-1">
+          <div class="text-emerald-400 text-xs font-bold uppercase tracking-wider mb-1">
             Office of the College Dean & Department Chair
           </div>
-          <h2 class="text-2xl font-black tracking-tight text-white">College Academic Operations & Advising Desk</h2>
+          <h2 class="text-2xl font-bold tracking-tight text-white">College Academic Operations & Advising Desk</h2>
           <p class="text-xs text-slate-300 mt-1">Curriculum advising for irregulars, transferees, and shiftees; grade encoding; and departmental clearance sign-offs.</p>
         </div>
         <button
           @click="loadData"
-          class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs rounded-xl border border-white/20 transition"
+          class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs rounded-2xl border border-white/20 transition"
         >
           Refresh Operations
         </button>
@@ -20,21 +20,21 @@
 
       <!-- Quick Metrics -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-emerald-800/30">
-        <div class="bg-black/30 rounded-xl p-3 border border-emerald-500/10">
-          <span class="text-[11px] text-emerald-300/80 uppercase tracking-wider font-semibold">Special Enrollees</span>
-          <p class="text-2xl font-black text-amber-300 mt-0.5">{{ specialEnrolleesCount }} Students</p>
+        <div class="bg-black/30 rounded-2xl p-3 border border-emerald-500/10">
+          <span class="text-xs text-emerald-300/80 uppercase tracking-wider font-semibold">Special Enrollees</span>
+          <p class="text-2xl font-bold text-amber-300 mt-0.5">{{ specialEnrolleesCount }} Students</p>
         </div>
-        <div class="bg-black/30 rounded-xl p-3 border border-emerald-500/10">
-          <span class="text-[11px] text-emerald-300/80 uppercase tracking-wider font-semibold">Department Clearances</span>
-          <p class="text-2xl font-black text-emerald-400 mt-0.5">{{ deptClearedCount }} Cleared</p>
+        <div class="bg-black/30 rounded-2xl p-3 border border-emerald-500/10">
+          <span class="text-xs text-emerald-300/80 uppercase tracking-wider font-semibold">Department Clearances</span>
+          <p class="text-2xl font-bold text-emerald-400 mt-0.5">{{ deptClearedCount }} Cleared</p>
         </div>
-        <div class="bg-black/30 rounded-xl p-3 border border-emerald-500/10">
-          <span class="text-[11px] text-emerald-300/80 uppercase tracking-wider font-semibold">Dean Endorsements</span>
-          <p class="text-2xl font-black text-teal-300 mt-0.5">{{ deanClearedCount }} Endorsed</p>
+        <div class="bg-black/30 rounded-2xl p-3 border border-emerald-500/10">
+          <span class="text-xs text-emerald-300/80 uppercase tracking-wider font-semibold">Dean Endorsements</span>
+          <p class="text-2xl font-bold text-teal-300 mt-0.5">{{ deanClearedCount }} Endorsed</p>
         </div>
-        <div class="bg-black/30 rounded-xl p-3 border border-emerald-500/10">
-          <span class="text-[11px] text-emerald-300/80 uppercase tracking-wider font-semibold">Active Courses</span>
-          <p class="text-2xl font-black text-white mt-0.5">{{ activeSectionCount }} Offerings</p>
+        <div class="bg-black/30 rounded-2xl p-3 border border-emerald-500/10">
+          <span class="text-xs text-emerald-300/80 uppercase tracking-wider font-semibold">Active Courses</span>
+          <p class="text-2xl font-bold text-white mt-0.5">{{ activeSectionCount }} Offerings</p>
         </div>
       </div>
     </div>
@@ -43,23 +43,23 @@
     <div class="flex items-center gap-2 border-b border-slate-200 pb-1 overflow-x-auto">
       <button
         @click="activeTab = 'clearances'"
-        class="px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap"
-        :class="activeTab === 'clearances' ? 'bg-[#064e3b] text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
+        class="px-4 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap"
+        :class="activeTab === 'clearances' ? 'bg-[#2a3b6f] text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
       >
         <span>Department & Dean Clearance</span>
       </button>
 
       <button
         @click="activeTab = 'grades'"
-        class="px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap"
-        :class="activeTab === 'grades' ? 'bg-[#064e3b] text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
+        class="px-4 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap"
+        :class="activeTab === 'grades' ? 'bg-[#2a3b6f] text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
       >
         <span>Academic Records & Approvals</span>
       </button>
       <button
         @click="activeTab = 'sections'"
-        class="px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap"
-        :class="activeTab === 'sections' ? 'bg-[#064e3b] text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
+        class="px-4 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap"
+        :class="activeTab === 'sections' ? 'bg-[#2a3b6f] text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
       >
         Subjects, sections, and rosters
       </button>
@@ -68,7 +68,7 @@
     <SectionWorkspace v-if="activeTab === 'sections'" mode="department" />
 
     <!-- TAB 1: DEPARTMENT CLEARANCE SIGN-OFF -->
-    <div v-if="activeTab === 'clearances'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div v-if="activeTab === 'clearances'" class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
       <div class="p-4 border-b border-slate-100 flex items-center justify-between">
         <h3 class="text-sm font-bold text-slate-900">Department Head & Dean Clearance Approvals</h3>
         <span class="text-xs text-slate-500">Advising verification for curriculum and prerequisite compliance</span>
@@ -77,7 +77,7 @@
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
           <thead>
-            <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
               <th class="py-3.5 px-4">Student</th>
               <th class="py-3.5 px-4">Category</th>
               <th class="py-3.5 px-4">Dept Head Status</th>
@@ -89,16 +89,16 @@
             <tr v-for="cl in clearancesList" :key="cl.id" class="hover:bg-slate-50/70">
               <td class="py-3.5 px-4">
                 <p class="font-bold text-slate-900">{{ cl.student?.name || cl.student?.user?.name }}</p>
-                <p class="font-mono text-[11px] text-blue-900">{{ cl.student?.student_number }} • {{ cl.student?.course_program }}</p>
+                <p class="font-mono text-xs text-blue-900">{{ cl.student?.student_number }} • {{ cl.student?.course_program }}</p>
               </td>
               <td class="py-3.5 px-4">
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase" :class="formatCategoryClass(cl.student?.student_type)">
+                <span class="px-2 py-0.5 rounded-full text-xs font-bold uppercase" :class="formatCategoryClass(cl.student?.student_type)">
                   {{ cl.student?.student_type || 'regular' }}
                 </span>
               </td>
               <td class="py-3.5 px-4">
                 <span
-                  class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase"
+                  class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase"
                   :class="cl.dept_status ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
                 >
                   {{ cl.dept_status ? '✓ CLEARED' : 'PENDING ADVISING' }}
@@ -106,7 +106,7 @@
               </td>
               <td class="py-3.5 px-4">
                 <span
-                  class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase"
+                  class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase"
                   :class="cl.dean_status ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
                 >
                   {{ cl.dean_status ? '✓ ENDORSED' : 'PENDING' }}
@@ -135,7 +135,7 @@
     </div>
 
     <!-- TAB 2: GRADE ENCODING -->
-    <div v-if="activeTab === 'grades'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden space-y-4">
+    <div v-if="activeTab === 'grades'" class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden space-y-4">
       <div class="p-4 border-b border-slate-100 flex items-center justify-between">
         <div>
           <h3 class="text-sm font-bold text-slate-900">Faculty Grade Encoding & Academic Ratings</h3>
@@ -146,7 +146,7 @@
       <div class="overflow-x-auto p-4 pt-0">
         <table class="w-full text-left border-collapse">
           <thead>
-            <tr class="bg-slate-50 border-y border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <tr class="bg-slate-50 border-y border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
               <th class="py-3.5 px-4">Student</th>
               <th class="py-3.5 px-4">Course</th>
               <th class="py-3.5 px-4 text-center">Midterm (1.0-5.0)</th>
@@ -182,10 +182,10 @@
                   class="w-16 text-center bg-slate-50 border border-slate-300 rounded-lg py-1 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
               </td>
-              <td class="py-3 px-4 text-center font-black text-blue-900">{{ g.grade || '-' }}</td>
+              <td class="py-3 px-4 text-center font-bold text-blue-900">{{ g.grade || '-' }}</td>
               <td class="py-3 px-4 text-center">
                 <span
-                  class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
+                  class="px-2 py-0.5 rounded-full text-xs font-bold uppercase"
                   :class="g.remarks === 'Passed' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
                 >
                   {{ g.remarks || 'Enrolled' }}
@@ -194,7 +194,7 @@
               <td class="py-3 px-4 text-right">
                 <button
                   @click="saveGrade(g)"
-                  class="px-3 py-1 bg-[#064e3b] hover:bg-[#022c22] text-white rounded-lg text-xs font-bold shadow-sm transition"
+                  class="px-3 py-1 bg-[#2a3b6f] hover:bg-[#1b2750] text-white rounded-lg text-xs font-bold shadow-sm transition"
                 >
                   Save Grade
                 </button>
