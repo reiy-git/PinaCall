@@ -654,7 +654,6 @@ import { authState, formatDisplayName, portalApi } from '../../services/api';
 import { activeSidebarSection } from '../../services/navigation';
 import Modal from '../Modal.vue';
 import SectionWorkspace from '../sections/SectionWorkspace.vue';
-import StudentQueueStatus from '../queue/StudentQueueStatus.vue';
 import type { StudentType, StudentApplication, Clearance, Enrollment, DocumentRequest } from '../../types';
 
 type TabType = 'overview' | 'enrollment' | 'clearance' | 'grades' | 'documents';

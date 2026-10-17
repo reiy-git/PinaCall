@@ -19,12 +19,38 @@ import { resetPortalPage } from './navigation';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
-class ApiRequestError extends Error {
-  readonly status: number;
+export interface EnrolleeApplication {
+  id: number;
+  name: string;
+  email: string;
+  contact_number: string;
+  program: string;
+  year_level: number;
+  student_type: string;
+  educational_background: string;
+  previous_school?: string | null;
+  reference: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  remarks?: string | null;
+  documents: Array<{ name: string; index: number }>;
+  email_sent_at?: string | null;
+}
 
-  constructor(message: string, status: number) {
+export interface EnrolleePage {
+  data: EnrolleeApplication[];
+  current_page: number;
+  last_page: number;
+  total: number;
+}
+
+export class ApiRequestError extends Error {
+  readonly status: number;
+  readonly errors: Record<string, string[]>;
+
+  constructor(message: string, status: number, errors: Record<string, string[]> = {}) {
     super(message);
     this.status = status;
+    this.errors = errors;
     this.name = 'ApiRequestError';
   }
 }
@@ -74,23 +100,24 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
     const res = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
+        ...(typeof FormData !== 'undefined' && options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
         Accept: 'application/json',
         ...(authState.token ? { Authorization: `Bearer ${authState.token}` } : {}),
         ...(options.headers || {}),
       },
     });
-    const data = await res.json().catch(() => ({}));
+    const data = await res.json().catch(() => ({})) as { message?: string; errors?: Record<string, string[] | string> };
     if (!res.ok) {
-      if (res.status === 422 && data.errors) {
-        const firstError = Object.values(data.errors).flat()[0];
-        throw new Error(typeof firstError === 'string' ? firstError : data.message || 'Please check the information and try again.');
-      }
-      throw new ApiRequestError(data.message || `Request failed (${res.status}).`, res.status);
+      const errors = Object.fromEntries(Object.entries(data.errors || {}).map(([field, messages]) => [
+        field,
+        Array.isArray(messages) ? messages.filter((message): message is string => typeof message === 'string') : [messages],
+      ]));
+      const firstError = Object.values(errors).flat()[0];
+      throw new ApiRequestError(firstError || data.message || `Request failed (${res.status}).`, res.status, errors);
     }
     authState.isLiveApi = true;
     authState.serviceUnavailable = false;
-    return data;
+    return data as T;
   } catch (err) {
     authState.isLiveApi = false;
     if (err instanceof TypeError || (err instanceof ApiRequestError && err.status >= 500)) authState.serviceUnavailable = true;
@@ -167,6 +194,68 @@ export const portalApi = {
     resetPortalPage(res.user.role);
     showToast('success', 'Registration received', 'Your PINACALL profile was created. Complete your enrollment application next.');
     return res.user;
+  },
+
+  async firstLoginReset(payload: { current_password: string; password: string; password_confirmation: string }): Promise<void> {
+    await apiFetch('/auth/first-login-reset', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    authState.token = null;
+    sessionStorage.removeItem('pinacall_access_token');
+    authState.user = null;
+    resetPortalPage(null);
+    showToast('success', 'Password Set', 'Sign in again with your new password.');
+  },
+
+  async getEnrollmentOptions(): Promise<{ programs: string[]; document_guidance: string }> {
+    return apiFetch('/enrollees/options');
+  },
+
+  async applyEnrollee(payload: FormData): Promise<{ reference: string }> {
+    return apiFetch('/enrollees/apply', {
+      method: 'POST',
+      body: payload,
+    });
+  },
+
+  async getEnrollees(status: string, page: number): Promise<EnrolleePage> {
+    const params = new URLSearchParams({ status, page: String(page) });
+    return apiFetch(`/admin/enrollees?${params}`);
+  },
+
+  async downloadEnrolleeDocument(id: number, index: number): Promise<void> {
+    const endpoint = `/admin/enrollees/${id}/documents/${index}`;
+    try {
+      const headers = new Headers({ Accept: 'application/octet-stream' });
+      if (authState.token) headers.set('Authorization', `Bearer ${authState.token}`);
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, { headers });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { message?: string };
+        throw new ApiRequestError(data.message || `Request failed (${res.status}).`, res.status);
+      }
+
+      authState.isLiveApi = true;
+      authState.serviceUnavailable = false;
+      const blobUrl = URL.createObjectURL(await res.blob());
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = res.headers.get('Content-Disposition')?.match(/filename="?([^";]+)"?/i)?.[1] || `application-document-${id}-${index + 1}`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
+    } catch (error) {
+      authState.isLiveApi = false;
+      if (error instanceof TypeError || (error instanceof ApiRequestError && error.status >= 500)) authState.serviceUnavailable = true;
+      console.warn(`PINACALL request to ${endpoint} failed:`, error);
+      throw error;
+    }
+  },
+
+  async decideEnrollee(id: number, decision: 'approve' | 'reject' | 'resend', remarks: string): Promise<void> {
+    await apiFetch(`/admin/enrollees/${id}/${decision}`, {
+      method: 'POST',
+      body: JSON.stringify(decision === 'resend' ? {} : { remarks }),
+    });
   },
 
   // Applications
