@@ -1,5 +1,6 @@
 <template>
   <div class="space-y-6">
+    <a href="/admin/enrollees" class="inline-block rounded-2xl bg-lime px-5 py-3 text-sm font-bold text-navy shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2">Review guest enrollment applications</a>
     <!-- Header Banner -->
     <div class="bg-gradient-to-r from-[#161f3d] via-[#1b2750] to-[#2a3b6f] rounded-3xl p-6 text-white shadow-lg border border-emerald-800/40">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
