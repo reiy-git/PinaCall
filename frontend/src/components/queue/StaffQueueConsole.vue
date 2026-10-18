@@ -1,17 +1,17 @@
 <template>
   <div class="space-y-5">
     <!-- Queue Control Header -->
-    <div class="rounded-2xl border border-emerald-800/30 bg-gradient-to-r from-zinc-950 to-emerald-950/60 p-5 text-white shadow-lg">
+    <div class="rounded-3xl bg-white p-5 text-slate-900 shadow-xl shadow-slate-900/5 ring-1 ring-slate-900/5 sm:p-6">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p class="text-xs font-bold uppercase tracking-[0.2em] text-emerald-400">Active Queue Control</p>
-          <h3 class="text-xl font-black tracking-tight mt-1">{{ stage === 'cashier' ? 'Cashier' : 'Registrar' }} Service Window</h3>
+          <p class="eyebrow text-coral">Active queue control</p>
+          <h3 class="mt-1 text-xl font-bold tracking-tight text-navy">{{ stage === 'cashier' ? 'Cashier' : 'Registrar' }} service window</h3>
         </div>
         <div class="flex items-center gap-2">
-          <label class="text-xs text-emerald-300/70 font-semibold">Window:</label>
+          <label class="text-xs font-semibold text-slate-500">Window:</label>
           <select
             v-model="windowNumber"
-            class="rounded-lg border border-emerald-700/40 bg-black/40 px-3 py-2 text-sm text-white outline-none"
+            class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none"
           >
             <option value="Window 1">Window 1</option>
             <option value="Window 2">Window 2</option>
@@ -19,7 +19,7 @@
           </select>
           <button
             @click="loadQueue"
-            class="rounded-lg bg-white/10 px-4 py-2 text-xs font-bold text-white border border-white/20 hover:bg-white/20 transition"
+            class="rounded-2xl bg-slate-100 px-4 py-2 text-xs font-bold text-navy transition hover:bg-slate-200"
           >
             Refresh
           </button>
@@ -27,13 +27,13 @@
       </div>
 
       <!-- Currently Serving -->
-      <div class="mt-5 rounded-xl border border-emerald-700/30 bg-black/30 p-4">
+      <div class="mt-5 rounded-3xl bg-navy p-4 text-white">
         <template v-if="currentlyServing">
           <div class="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <p class="text-xs text-emerald-400/70 font-semibold uppercase tracking-wider">Current Ticket</p>
-              <p class="text-3xl font-black text-white mt-1">{{ currentlyServing.token_number }}</p>
-              <p class="text-sm text-slate-300 mt-1">
+              <p class="eyebrow text-lime">Current ticket</p>
+              <p class="mt-1 text-3xl font-bold text-white">{{ currentlyServing.token_number }}</p>
+              <p class="mt-1 text-sm text-slate-300">
                 {{ currentlyServing.student?.user?.name || currentlyServing.student?.name || 'Unknown' }}
                 <span class="text-slate-500 ml-1">({{ currentlyServing.student?.student_number }})</span>
               </p>
@@ -62,7 +62,7 @@
         </template>
         <template v-else>
           <div class="flex items-center justify-between">
-            <p class="text-sm text-slate-400">No student currently being served.</p>
+            <p class="text-sm text-slate-300">No student currently being served.</p>
             <button
               @click="handleCallNext"
               :disabled="!queueData || queueData.waiting.length === 0"
@@ -160,10 +160,10 @@
           <template v-else>
             <button
               @click="handleComplete('release_document')"
-              :disabled="actionLoading || currentlyServing.document_request?.payment_status !== 'paid' || currentlyServing.document_request?.status !== 'ready_for_pickup'"
+              :disabled="actionLoading || currentlyServing.document_request?.payment_status !== 'paid' || !['ready_for_pickup', 'released'].includes(currentlyServing.document_request?.status || '')"
               class="w-full rounded-xl bg-emerald-700 px-6 py-3 text-sm font-black text-white uppercase tracking-wider hover:bg-emerald-600 disabled:opacity-50 transition shadow-lg"
             >
-              Complete Transaction & Release Document
+              {{ currentlyServing.document_request?.status === 'released' ? 'Complete Queue Ticket' : 'Complete Transaction & Release Document' }}
             </button>
           </template>
         </div>
@@ -234,7 +234,7 @@ let refreshInterval: ReturnType<typeof setInterval>;
 
 const currentlyServing = computed<QueueToken | null>(() => {
   if (!queueData.value) return null;
-  return queueData.value.serving[0] || null;
+  return queueData.value.serving.find((token) => token.window_number === windowNumber.value) || null;
 });
 
 async function loadQueue() {
