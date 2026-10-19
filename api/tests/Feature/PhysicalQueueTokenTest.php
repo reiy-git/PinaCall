@@ -26,6 +26,30 @@ class PhysicalQueueTokenTest extends TestCase
         ])->assertUnauthorized();
     }
 
+    public function test_initial_cashier_and_registrar_token_inventory_is_seeded_by_migrations(): void
+    {
+        $this->assertDatabaseCount('physical_queue_tokens', 120);
+        $this->assertDatabaseHas('physical_queue_tokens', [
+            'reference' => 'C-01',
+            'service_stage' => 'cashier',
+            'status' => 'available',
+        ]);
+        $this->assertDatabaseHas('physical_queue_tokens', [
+            'reference' => 'R-60',
+            'service_stage' => 'registrar',
+            'status' => 'available',
+        ]);
+
+        $cashier = $this->staff('cashier');
+        $this->actingAsPortalUser($cashier);
+        $response = $this->getJson('/api/queue/physical-tokens?service_stage=cashier')->assertOk();
+
+        $this->assertCount(60, $response->json('tokens'));
+        $this->getJson('/api/queue/physical-tokens/1/qr')
+            ->assertOk()
+            ->assertJsonPath('reference', 'C-01');
+    }
+
     public function test_active_student_can_activate_available_cashier_token_for_own_eligible_request(): void
     {
         [$user, $student] = $this->student();
@@ -75,9 +99,9 @@ class PhysicalQueueTokenTest extends TestCase
 
         $this->getJson('/api/queue/physical-tokens?service_stage=cashier')
             ->assertOk()
-            ->assertJsonPath('tokens.0.reference', $token->reference)
-            ->assertJsonMissingPath('tokens.0.qr_secret')
-            ->assertJsonMissingPath('tokens.0.qr_secret_encrypted');
+            ->assertJsonFragment(['reference' => $token->reference])
+            ->assertJsonMissingPath('tokens.60.qr_secret')
+            ->assertJsonMissingPath('tokens.60.qr_secret_encrypted');
 
         $this->getJson("/api/queue/physical-tokens/{$token->id}/qr")
             ->assertOk()
@@ -150,7 +174,7 @@ class PhysicalQueueTokenTest extends TestCase
         $this->actingAsPortalUser($registrar);
         $this->getJson('/api/queue/physical-tokens?service_stage=registrar')
             ->assertOk()
-            ->assertJsonPath('tokens.0.reference', $registrarToken->reference);
+            ->assertJsonFragment(['reference' => $registrarToken->reference]);
         $this->getJson("/api/queue/physical-tokens/{$registrarToken->id}/qr")
             ->assertOk()
             ->assertJsonPath('qr_secret', $registrarSecret);
