@@ -50,14 +50,25 @@ phone on the same network. Set `VITE_PUBLIC_APP_URL` to the computer's LAN URL,
 use the Vite `/api` proxy (configured by `VITE_API_PROXY_TARGET`), and start
 Vite with its network host enabled. Do not print a QR whose URL contains
 `localhost` or `127.0.0.1`; those addresses point to the scanning phone itself.
-For production, copy `frontend/.env.production.example` to
-`frontend/.env.production`, replace `portal.example.com` with the real public
-HTTPS frontend origin, and build the frontend after setting the values. These
-`VITE_` settings are embedded at build time, not read from the server when the
-QR is scanned. Keep `VITE_API_BASE_URL=/api` when the production reverse proxy
-routes `/api` to Laravel; otherwise configure it as the full HTTPS API URL and
-set Laravel's `FRONTEND_URL` to the exact frontend origin. Never use the
-development-only Vite host or proxy as the production web server.
+For production on Vercel, set the variables from
+`frontend/.env.production.example` in **Project Settings → Environment
+Variables → Production**, then redeploy. `VITE_PUBLIC_APP_URL` must be the
+public HTTPS Vercel origin (currently `https://pina-call.vercel.app`).
+`VITE_API_BASE_URL=/api` is routed to Render by `frontend/vercel.json`. These
+`VITE_` values are embedded at build time, not read when a QR is scanned.
+
+Deploy the Laravel API changes to Render as well. In the Render shell, apply
+the new schema and create reusable QR token records with:
+
+```sh
+php artisan migrate --force
+php artisan db:seed --class=PhysicalQueueTokenSeeder --force
+```
+
+If the API is called directly from another frontend origin instead of through
+the Vercel `/api` rewrite, configure Laravel's `FRONTEND_URL` to that exact
+HTTPS origin. Do not use the development-only Vite host or proxy as the
+production web server.
 
 1. Student submits a document request while signed in. Every currently listed
    document type follows the payment-first route; the request starts as

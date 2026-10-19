@@ -37,7 +37,6 @@ async function loadLobbyData() {
     // Retry on the next polling interval.
   }
 }
-}
 
 onMounted(() => {
   void loadLobbyData();
