@@ -57,14 +57,16 @@ public HTTPS Vercel origin (currently `https://pina-call.vercel.app`).
 `VITE_API_BASE_URL=/api` is routed to Render by `frontend/vercel.json`. These
 `VITE_` values are embedded at build time, not read when a QR is scanned.
 
-Deploy the Laravel API changes to Render as well. In the Render shell, apply
-the new schema and create reusable QR token records with:
+Deploy the Laravel API changes to Render as well. The new inventory migration
+provisions 60 cashier and 60 registrar tokens automatically. In the Render
+shell, apply pending migrations:
 
 ```sh
 php artisan migrate --force
-php artisan db:seed --class=PhysicalQueueTokenSeeder --force
 ```
 
+The standalone `PhysicalQueueTokenSeeder` remains available for explicitly
+backfilling an installation if needed; it is not required for normal deployment.
 If the API is called directly from another frontend origin instead of through
 the Vercel `/api` rewrite, configure Laravel's `FRONTEND_URL` to that exact
 HTTPS origin. Do not use the development-only Vite host or proxy as the
