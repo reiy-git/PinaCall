@@ -1,140 +1,87 @@
 <template>
-  <button
-    v-if="authState.user"
-    type="button"
-    class="fixed bottom-4 left-4 z-40 flex items-center gap-2 rounded-full bg-emerald-900 px-4 py-3 text-sm font-bold text-white shadow-lg ring-1 ring-white/20 lg:hidden"
-    :aria-expanded="mobileOpen"
-    aria-controls="portal-navigation"
-    @click="mobileOpen = !mobileOpen"
-  >
-    <span aria-hidden="true">{{ mobileOpen ? '×' : '☰' }}</span>
-    <span>{{ mobileOpen ? 'Close menu' : 'Menu' }}</span>
-  </button>
-
-  <div
-    v-if="mobileOpen && authState.user"
-    class="fixed inset-0 z-40 bg-slate-950/50 lg:hidden"
-    aria-hidden="true"
-    @click="mobileOpen = false"
-  />
-
+  <!-- Desktop (lg+) sticky aside. Below lg the top Navbar takes over. -->
   <aside
     v-if="authState.user"
     id="portal-navigation"
-    @keydown.esc.prevent.stop="mobileOpen = false"
-    class="fixed inset-y-0 left-0 z-50 flex h-dvh w-[min(20rem,88vw)] shrink-0 flex-col overflow-y-auto border-r border-emerald-950 bg-[#09090b] p-5 pt-20 text-white shadow-xl transition-transform lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:min-h-[32rem] lg:translate-x-0 lg:w-72 lg:pt-5 lg:shadow-none"
-    :class="mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+    class="sticky top-3 ml-3 mt-3 hidden h-[calc(100dvh-1.5rem)] w-72 shrink-0 flex-col gap-6 self-start overflow-y-auto rounded-3xl bg-white p-5 shadow-xl shadow-slate-900/10 ring-1 ring-slate-900/5 lg:flex"
     aria-label="Portal navigation"
   >
-    <div class="space-y-6">
-      <div class="flex items-center justify-between lg:hidden">
-        <span class="text-xs font-bold uppercase tracking-wider text-emerald-300">Portal menu</span>
-        <button type="button" class="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white hover:bg-white/10" @click="mobileOpen = false">Close</button>
-      </div>
-      <div class="rounded-2xl border border-emerald-900/60 bg-[#18181b] p-3.5">
-        <p class="truncate text-sm font-bold">{{ displayName }}</p>
-        <p class="mt-1 text-xs capitalize text-emerald-300">{{ roleLabel }}</p>
-      </div>
-
-      <nav class="space-y-2" :aria-label="`${roleLabel} pages`">
-        <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-emerald-400">{{ sectionLabel }}</p>
-        <button
-          v-for="item in navigationItems"
-          :key="item.page"
-          type="button"
-          class="w-full rounded-lg border px-3 py-2.5 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
-          :class="activeSidebarSection === item.page
-            ? 'border-emerald-700/50 bg-emerald-900/60 font-semibold text-emerald-100'
-            : 'border-transparent text-slate-300 hover:bg-white/5 hover:text-white'"
-          :aria-current="activeSidebarSection === item.page ? 'page' : undefined"
-          @click="navigate(item.page)"
-        >
-          {{ item.label }}
-        </button>
-      </nav>
+    <div class="flex items-center justify-between gap-2">
+    <a href="/" class="flex items-center gap-3 px-1" aria-label="PinaCall home">
+      <img src="/assets/images/seal.webp" alt="" class="h-11 w-11 shrink-0 rounded-full" width="44" height="44">
+      <span class="leading-tight">
+        <span class="block text-lg font-bold tracking-tight text-navy dark:text-white">Pina<span class="rounded bg-lime px-1 text-navy">Call</span></span>
+        <span class="block text-xs text-slate-500">University Portal</span>
+      </span>
+    </a>
+    <ThemeToggle />
     </div>
 
-    <div class="mt-auto border-t border-emerald-950 pt-4 text-xs text-slate-400">
-      <p class="font-bold text-white">Need help?</p>
-      <p class="mt-1">Contact the Registrar or ICT Service Desk during office hours.</p>
-      <a class="mt-2 inline-block font-medium text-emerald-300" href="mailto:support@pinacall.edu">support@pinacall.edu</a>
+    <nav class="flex-1 space-y-1" :aria-label="`${roleLabel} pages`">
+      <p class="eyebrow px-3 pb-2 text-slate-400">{{ sectionLabel }}</p>
+      <button
+        v-for="item in navigationItems"
+        :key="item.page"
+        type="button"
+        class="group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-medium transition"
+        :class="activeSidebarSection === item.page
+          ? 'bg-lime font-semibold text-navy'
+          : 'text-slate-600 hover:bg-slate-100 hover:text-navy'"
+        :aria-current="activeSidebarSection === item.page ? 'page' : undefined"
+        @click="navigate(item.page)"
+      >
+        <span
+          class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition"
+          :class="activeSidebarSection === item.page ? 'bg-navy text-lime' : 'bg-slate-100 text-slate-500 group-hover:bg-white'"
+        >
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="pageIcons[item.page]" /></svg>
+        </span>
+        <span class="leading-snug">{{ item.label }}</span>
+      </button>
+    </nav>
+
+    <div class="space-y-4">
+      <div class="rounded-3xl bg-navy p-4 text-white">
+        <p class="text-sm font-semibold">Need help?</p>
+        <p class="mt-1 text-xs text-fog">Contact the Registrar or ICT Service Desk during office hours.</p>
+        <a class="mt-3 inline-block rounded-xl bg-lime px-3 py-1.5 text-xs font-semibold text-navy hover:brightness-95" href="mailto:support@pinacall.edu">support@pinacall.edu</a>
+      </div>
+
+      <div class="flex items-center gap-3 rounded-2xl bg-slate-100 p-3">
+        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-navy text-sm font-semibold text-lime">{{ initials }}</span>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-semibold text-slate-900">{{ displayName }}</p>
+          <p class="truncate text-xs text-slate-500">{{ roleLabel }}</p>
+        </div>
+        <button type="button" class="rounded-xl p-2 text-slate-500 transition hover:bg-coral/10 hover:text-coral" title="Sign out" aria-label="Sign out" @click="portalApi.logout()">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" /></svg>
+        </button>
+      </div>
     </div>
   </aside>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { authState, formatDisplayName } from '../services/api';
-import { activeSidebarSection, defaultPortalPage, isPortalPageAllowed, setSidebarSection, type PortalPage } from '../services/navigation';
-import type { UserRole } from '../types';
+import { computed, watch } from 'vue';
+import ThemeToggle from './ThemeToggle.vue';
+import { authState, formatDisplayName, portalApi } from '../services/api';
+import {
+  activeSidebarSection, defaultPortalPage, isPortalPageAllowed, navItemsByRole,
+  pageIcons, portalSectionLabel, roleDisplayName, setSidebarSection, type PortalPage,
+} from '../services/navigation';
 
-const mobileOpen = ref(false);
-
-const itemsByRole: Record<UserRole, { page: PortalPage; label: string }[]> = {
-  student: [
-    { page: 'overview', label: 'Dashboard overview' },
-    { page: 'enrollment', label: 'Enrollment application' },
-    { page: 'clearance', label: 'Clearance tracker' },
-    { page: 'grades', label: 'Academic records and grades' },
-    { page: 'documents', label: 'Document requests' },
-  ],
-  registrar: [
-    { page: 'applications', label: 'Admissions and applications' },
-    { page: 'students', label: 'Student registry' },
-    { page: 'documents', label: 'Document request fulfillment' },
-  ],
-  cashier: [
-    { page: 'clearances', label: 'Financial clearance ledger' },
-    { page: 'documents', label: 'Document payment collection' },
-  ],
-  department_head: [
-    { page: 'clearances', label: 'Department and dean clearance' },
-    { page: 'grades', label: 'Academic records and approvals' },
-    { page: 'sections', label: 'Subjects, sections, and rosters' },
-  ],
-  faculty: [
-    { page: 'sections', label: 'My assigned sections' },
-    { page: 'gradebook', label: 'Class gradebook and ratings' },
-  ],
-  admin: [
-    { page: 'analytics', label: 'Institutional overview' },
-    { page: 'users', label: 'User accounts registry' },
-    { page: 'courses', label: 'Subject catalog' },
-  ],
-};
-
-const roleLabel = computed(() => {
-  const role = authState.user?.role;
-  if (role === 'department_head') return 'Department head';
-  return role ? `${role.charAt(0).toUpperCase()}${role.slice(1)}` : '';
-});
+const roleLabel = computed(() => roleDisplayName(authState.user?.role));
 const displayName = computed(() => formatDisplayName(authState.user?.name));
-
-const sectionLabel = computed(() => authState.user?.role === 'cashier'
-  ? 'Financial services'
-  : authState.user?.role === 'department_head'
-    ? 'Academic affairs'
-    : authState.user?.role === 'admin'
-      ? 'Administration'
-      : authState.user?.role === 'faculty'
-        ? 'Faculty services'
-        : authState.user?.role === 'registrar'
-          ? 'Registrar services'
-          : 'Student services');
-
-const navigationItems = computed(() => authState.user ? itemsByRole[authState.user.role].map(item =>
-  authState.user?.approved_admission && item.page === 'enrollment'
-    ? { ...item, label: 'Subjects & sections' } : item
-) : []);
+const initials = computed(() => displayName.value.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('') || 'U');
+const sectionLabel = computed(() => portalSectionLabel(authState.user?.role));
+const navigationItems = computed(() => authState.user ? navItemsByRole[authState.user.role] : []);
 
 function navigate(page: PortalPage) {
   if (!authState.user || !isPortalPageAllowed(authState.user.role, page)) return;
   setSidebarSection(page, authState.user.role);
-  mobileOpen.value = false;
 }
 
 watch(() => authState.user?.role, (role) => {
-  mobileOpen.value = false;
   if (role && !isPortalPageAllowed(role, activeSidebarSection.value)) {
     setSidebarSection(defaultPortalPage(role), role);
   }

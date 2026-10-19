@@ -2,10 +2,9 @@ export type UserRole = 'student' | 'registrar' | 'cashier' | 'department_head' |
 export type StudentType = 'new' | 'transferee' | 'irregular' | 'old' | 'shiftee' | 'returnee';
 export type ApplicationStatus = 'pending' | 'approved' | 'rejected';
 export type ClearanceStatus = 'pending' | 'cleared';
-export type DocRequestStatus = 'submitted' | 'processing' | 'ready_for_pickup' | 'released' | 'rejected';
+export type DocRequestStatus = 'waiting_for_payment' | 'submitted' | 'processing' | 'ready_for_pickup' | 'released' | 'rejected';
 
 export interface User {
-  must_change_password: boolean;
   id: number;
   name: string;
   email: string;
@@ -14,15 +13,6 @@ export interface User {
   is_active?: boolean;
   student?: Student;
   applications?: StudentApplication[];
-  approved_admission?: {
-    reference: string;
-    status: 'APPROVED';
-    program: string;
-    student_type: StudentType;
-    year_level: number;
-    previous_school: string | null;
-    reviewed_at: string | null;
-  } | null;
 }
 
 export interface Student {
@@ -184,4 +174,67 @@ export interface DashboardStats {
   pending_documents: number;
   released_documents: number;
   student_types: Record<StudentType, number>;
+}
+
+export type QueueTokenStatus = 'waiting' | 'serving' | 'hold' | 'ready' | 'completed' | 'no_show' | 'skipped';
+export type ServiceStage = 'cashier' | 'registrar';
+
+export interface QueueToken {
+  id: number;
+  token_number: string;
+  daily_sequence: number;
+  student_id: number;
+  document_request_id: number;
+  service_stage: ServiceStage;
+  window_number?: string | null;
+  status: QueueTokenStatus;
+  queue_date: string;
+  checked_in_at?: string | null;
+  called_at?: string | null;
+  completed_at?: string | null;
+  created_at?: string;
+  student?: {
+    id: number;
+    name: string;
+    student_number: string;
+    user?: { name: string; email: string };
+  };
+  document_request?: DocumentRequest;
+}
+
+export interface LobbyDisplayData {
+  date: string;
+  cashier: {
+    now_serving: QueueToken | null;
+    upcoming: QueueToken[];
+    waiting_count: number;
+  };
+  registrar: {
+    now_serving: QueueToken | null;
+    upcoming: QueueToken[];
+    waiting_count: number;
+  };
+}
+
+export interface StaffQueueData {
+  stage: ServiceStage;
+  date: string;
+  serving: QueueToken[];
+  waiting: QueueToken[];
+  on_hold: QueueToken[];
+  completed: QueueToken[];
+  stats: {
+    total_today: number;
+    served: number;
+    waiting_count: number;
+    no_shows: number;
+  };
+}
+
+export interface QueueStatusResponse {
+  student_name: string;
+  student_number: string;
+  tokens: QueueToken[];
+  active_token: QueueToken | null;
+  position_in_queue: number | null;
 }

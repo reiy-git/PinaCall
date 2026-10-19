@@ -26,5 +26,18 @@ class DocumentRequest extends Model
     {
         return $this->belongsTo(Student::class);
     }
+
+    public function queueTokens()
+    {
+        return $this->hasMany(QueueToken::class);
+    }
+
+    public function activeQueueToken()
+    {
+        return $this->hasOne(QueueToken::class)
+            ->whereDate('queue_date', now()->toDateString())
+            ->whereNotIn('status', ['completed', 'no_show', 'skipped'])
+            ->latest();
+    }
 }
 

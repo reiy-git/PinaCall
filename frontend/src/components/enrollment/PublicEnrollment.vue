@@ -1,71 +1,88 @@
 <template>
-  <section class="mx-auto max-w-3xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8" aria-labelledby="application-title">
-    <p class="text-xs font-bold uppercase tracking-widest text-emerald-700">PinaCall admissions</p>
-    <h1 id="application-title" class="mt-2 text-3xl font-bold">Student application</h1>
-    <div v-if="reference" ref="confirmation" role="status" tabindex="-1" class="mt-6 rounded-xl bg-emerald-50 p-6 focus:outline-emerald-700">
-      <h2 class="text-xl font-bold text-emerald-900">Application received</h2>
-      <p class="mt-3">Your application reference is <strong class="break-all">{{ reference }}</strong>.</p>
-      <p class="mt-3">Your application is pending Registrar review. Submitting did not create an account. If approved, you will receive account instructions by email, including how to set your password.</p>
-      <a href="/" class="mt-5 inline-block font-bold text-emerald-800 underline">Return home / sign in</a>
+  <section class="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-emerald-900/10 bg-white shadow-xl" aria-labelledby="application-title">
+    <header class="border-b border-slate-200 px-6 py-4 sm:px-8">
+      <p class="text-xs font-bold uppercase tracking-wider text-emerald-800">PinaCall admissions</p>
+      <h1 id="application-title" class="mt-2 text-2xl font-bold tracking-tight text-slate-900">Student application</h1>
+      <p v-if="!reference" class="mt-1 text-sm text-slate-600">Complete your details and upload supporting documents before Registrar review. An account is issued only after approval.</p>
+    </header>
+
+    <div class="px-6 py-5 sm:px-8 sm:py-6">
+      <div v-if="reference" ref="confirmation" role="status" tabindex="-1" class="rounded-2xl border border-emerald-900/10 bg-emerald-50/70 p-6 text-emerald-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">
+        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-lime text-navy" aria-hidden="true">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10" /></svg>
+        </span>
+        <h2 class="mt-4 text-xl font-bold tracking-tight text-emerald-900">Application received</h2>
+        <p class="mt-3 text-sm">Your application reference is <strong class="break-all">{{ reference }}</strong>.</p>
+        <p class="mt-3 text-sm leading-relaxed text-emerald-900/80">Your application is pending Registrar review. Submitting did not create an account. If approved, you will receive account instructions by email, including how to set your password.</p>
+        <a href="/" class="mt-5 inline-block rounded-2xl bg-lime px-5 py-3 text-sm font-bold text-navy shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2">Return home / sign in</a>
+      </div>
+
+      <template v-else>
+        <ol aria-label="Application steps" class="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <li v-for="(label, index) in steps" :key="label" :aria-current="step === index ? 'step' : undefined" class="flex items-start gap-3 rounded-2xl border p-3 text-sm transition" :class="step === index ? 'border-emerald-800 bg-emerald-50 font-bold text-emerald-900' : 'border-slate-200 text-slate-600'">
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold" :class="index < step ? 'bg-lime text-navy' : step === index ? 'bg-navy text-lime' : 'bg-slate-100 text-slate-600'" aria-hidden="true">{{ index < step ? '✓' : index + 1 }}</span>
+            <span class="min-w-0"><span class="block text-xs font-semibold text-slate-500">Step {{ index + 1 }} {{ index < step ? '— Complete' : '' }}</span>{{ label }}</span>
+          </li>
+        </ol>
+
+        <p v-if="optionsError" role="alert" class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{{ optionsError }} <button type="button" class="font-semibold underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700" @click="loadOptions">Retry</button></p>
+
+        <form ref="formElement" novalidate @submit.prevent="advance" :aria-busy="busy">
+          <h2 ref="heading" tabindex="-1" class="mb-4 text-xl font-bold tracking-tight text-slate-900 focus:outline-none">{{ steps[step] }}</h2>
+          <fieldset :disabled="busy" class="grid gap-5">
+            <template v-if="step < 2">
+              <div v-for="field in visibleFields" :key="field.key">
+                <label :for="field.key" class="mb-1.5 block text-sm font-semibold text-slate-800">{{ field.label }}{{ field.required ? ' *' : ' (optional)' }}</label>
+                <select v-if="field.key === 'program' || field.key === 'student_type'" :id="field.key" v-model="form[field.key]" :class="fieldClass" :aria-required="field.required" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-error`">
+                  <option value="" disabled>Select an option</option>
+                  <option v-for="option in field.key === 'program' ? programs : categories" :key="option" :value="option">{{ categoryLabels[option] || option }}</option>
+                </select>
+                <textarea v-else-if="field.key === 'educational_background'" :id="field.key" v-model.trim="form[field.key]" rows="4" maxlength="5000" :class="fieldClass" :aria-required="field.required" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-error`"></textarea>
+                <input v-else :id="field.key" v-model.trim="form[field.key]" :type="field.type || 'text'" :autocomplete="field.autocomplete" :maxlength="field.max" :min="field.key === 'year_level' ? 1 : undefined" :max="field.key === 'year_level' ? 6 : undefined" :class="fieldClass" :aria-required="field.required" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-error`">
+                <p :id="`${field.key}-error`" class="mt-1 text-sm text-red-700">{{ errors[field.key] }}</p>
+              </div>
+            </template>
+
+            <div v-if="step === 2">
+              <p class="mb-3 text-sm text-slate-600">{{ documentGuidance }}</p>
+              <label for="documents" class="mb-1.5 block text-sm font-semibold text-slate-800">Supporting documents *</label>
+              <p id="document-help" class="mb-2 text-sm text-slate-600">Choose 1–5 PDF, JPEG or PNG files, up to 5 MB each. Add files below; remove a file before adding its replacement.</p>
+              <input id="documents" aria-required="true" type="file" accept=".pdf,.jpg,.jpeg,.png" multiple :class="[fieldClass, 'file:mr-3 file:cursor-pointer file:rounded-xl file:border-0 file:bg-lime file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-navy']" :aria-invalid="!!errors.documents" aria-describedby="document-help documents-error" @change="selectFiles">
+              <p id="documents-error" class="mt-2 text-sm text-red-700">{{ errors.documents }}</p>
+              <ul class="mt-4 space-y-2">
+                <li v-for="(file, index) in files" :key="index" class="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                  <span class="min-w-0 break-all text-slate-800">{{ file.name }} <span class="text-slate-500">({{ formatSize(file.size) }})</span></span>
+                  <button type="button" :aria-label="`Remove ${file.name}`" class="shrink-0 rounded-lg px-1 font-semibold text-red-700 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700" @click="removeFile(index)">Remove</button>
+                </li>
+              </ul>
+            </div>
+
+            <div v-if="step === 3" class="space-y-5">
+              <p class="text-sm text-slate-600">Review your details. Submitting sends an application for review and does not create an account.</p>
+              <div v-for="(group, index) in fieldGroups" :key="index" class="rounded-2xl border border-slate-200 p-4">
+                <div class="mb-3 flex items-center justify-between gap-3"><h3 class="font-bold text-slate-900">{{ steps[index] }}</h3><button type="button" class="rounded-lg px-1 text-sm font-semibold text-emerald-800 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700" :aria-label="`Edit ${steps[index]}`" @click="goTo(index)">Edit</button></div>
+                <dl class="space-y-3"><div v-for="field in group" :key="field.key"><dt class="text-xs font-semibold text-slate-500">{{ field.label }}</dt><dd class="whitespace-pre-wrap break-words text-sm text-slate-900">{{ categoryLabels[String(form[field.key])] || form[field.key] || 'Not provided' }}</dd></div></dl>
+              </div>
+              <div class="rounded-2xl border border-slate-200 p-4"><div class="flex items-center justify-between gap-3"><h3 class="font-bold text-slate-900">Documents</h3><button type="button" class="rounded-lg px-1 text-sm font-semibold text-emerald-800 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700" @click="goTo(2)">Edit documents</button></div><ul class="mt-3 space-y-2 text-sm text-slate-900"><li v-for="(file, index) in files" :key="index" class="break-all">{{ file.name }} ({{ formatSize(file.size) }})</li></ul></div>
+            </div>
+
+            <p v-if="error" role="alert" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{{ error }}</p>
+            <div class="flex flex-wrap justify-between gap-3 border-t border-slate-200 pt-5">
+              <button v-if="step > 0" type="button" class="rounded-2xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2" @click="goTo(step - 1)">Previous</button>
+              <button type="submit" :disabled="busy || !programs.length" class="ml-auto rounded-2xl bg-lime px-5 py-3 text-sm font-bold text-navy shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">{{ busy ? 'Submitting…' : step === 3 ? 'Submit application' : 'Continue' }}</button>
+            </div>
+          </fieldset>
+        </form>
+        <a href="/" class="mt-6 inline-block rounded-lg text-sm font-semibold text-emerald-800 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">Return home / sign in</a>
+      </template>
     </div>
-    <template v-else>
-      <p class="mt-3 text-sm text-slate-600">Complete your details and upload supporting documents before Registrar review. An account is issued only after approval.</p>
-      <ol aria-label="Application steps" class="my-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <li v-for="(label, index) in steps" :key="label" :aria-current="step === index ? 'step' : undefined" class="rounded-xl border p-3 text-sm" :class="step === index ? 'border-emerald-700 bg-emerald-50 font-bold text-emerald-900' : 'border-slate-200 text-slate-600'">
-          <span class="block text-xs">Step {{ index + 1 }} {{ index < step ? '— Complete' : '' }}</span>{{ label }}
-        </li>
-      </ol>
-      <p v-if="optionsError" role="alert" class="mb-4 text-red-700">{{ optionsError }} <button type="button" class="underline" @click="loadOptions">Retry</button></p>
-      <form ref="formElement" novalidate @submit.prevent="advance" :aria-busy="busy">
-        <h2 ref="heading" tabindex="-1" class="mb-4 text-xl font-bold focus:outline-none">{{ steps[step] }}</h2>
-        <fieldset :disabled="busy" class="grid gap-5">
-          <template v-if="step < 2">
-            <div v-for="field in visibleFields" :key="field.key">
-              <label :for="field.key" class="text-sm font-semibold">{{ field.label }}{{ field.required ? ' *' : ' (optional)' }}</label>
-              <select v-if="field.key === 'program' || field.key === 'student_type'" :id="field.key" v-model="form[field.key]" class="field" :aria-required="field.required" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-error`">
-                <option value="" disabled>Select an option</option>
-                <option v-for="option in field.key === 'program' ? programs : categories" :key="option" :value="option">{{ categoryLabels[option] || option }}</option>
-              </select>
-              <textarea v-else-if="field.key === 'educational_background'" :id="field.key" v-model.trim="form[field.key]" rows="4" maxlength="5000" class="field" :aria-required="field.required" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-error`"></textarea>
-              <input v-else :id="field.key" v-model.trim="form[field.key]" :type="field.type || 'text'" :autocomplete="field.autocomplete" :maxlength="field.max" :min="field.key === 'year_level' ? 1 : undefined" :max="field.key === 'year_level' ? 6 : undefined" class="field" :aria-required="field.required" :aria-invalid="!!errors[field.key]" :aria-describedby="`${field.key}-error`">
-              <p :id="`${field.key}-error`" class="mt-1 text-sm text-red-700">{{ errors[field.key] }}</p>
-            </div>
-          </template>
-          <div v-if="step === 2">
-            <p class="mb-3 text-sm text-slate-600">{{ documentGuidance }}</p>
-            <label for="documents" class="text-sm font-semibold">Supporting documents *</label>
-            <p id="document-help" class="my-2 text-sm text-slate-600">Choose 1–5 PDF, JPEG or PNG files, up to 5 MB each. Add files below; remove a file before adding its replacement.</p>
-            <input id="documents" aria-required="true" type="file" accept=".pdf,.jpg,.jpeg,.png" multiple class="field" :aria-invalid="!!errors.documents" aria-describedby="document-help documents-error" @change="selectFiles">
-            <p id="documents-error" class="mt-2 text-sm text-red-700">{{ errors.documents }}</p>
-            <ul class="mt-4 space-y-2">
-              <li v-for="(file, index) in files" :key="index" class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3 text-sm">
-                <span class="min-w-0 break-all">{{ file.name }} <span class="text-slate-500">({{ formatSize(file.size) }})</span></span>
-                <button type="button" :aria-label="`Remove ${file.name}`" class="shrink-0 font-semibold text-red-700 underline" @click="removeFile(index)">Remove</button>
-              </li>
-            </ul>
-          </div>
-          <div v-if="step === 3" class="space-y-5">
-            <p class="text-sm text-slate-600">Review your details. Submitting sends an application for review and does not create an account.</p>
-            <div v-for="(group, index) in fieldGroups" :key="index" class="rounded-xl border border-slate-200 p-4">
-              <div class="mb-3 flex justify-between gap-3"><h3 class="font-bold">{{ steps[index] }}</h3><button type="button" class="text-emerald-800 underline" :aria-label="`Edit ${steps[index]}`" @click="goTo(index)">Edit</button></div>
-              <dl class="space-y-3"><div v-for="field in group" :key="field.key"><dt class="text-xs font-semibold text-slate-500">{{ field.label }}</dt><dd class="whitespace-pre-wrap break-words text-sm">{{ categoryLabels[String(form[field.key])] || form[field.key] || 'Not provided' }}</dd></div></dl>
-            </div>
-            <div class="rounded-xl border border-slate-200 p-4"><div class="flex justify-between"><h3 class="font-bold">Documents</h3><button type="button" class="text-emerald-800 underline" @click="goTo(2)">Edit documents</button></div><ul class="mt-3 space-y-2 text-sm"><li v-for="(file, index) in files" :key="index" class="break-all">{{ file.name }} ({{ formatSize(file.size) }})</li></ul></div>
-          </div>
-          <p v-if="error" role="alert" class="rounded-xl bg-red-50 p-3 text-sm text-red-700">{{ error }}</p>
-          <div class="flex flex-wrap justify-between gap-3 border-t border-slate-100 pt-5">
-            <button v-if="step > 0" type="button" class="rounded-xl border border-slate-300 px-5 py-3 font-semibold" @click="goTo(step - 1)">Previous</button>
-            <button type="submit" :disabled="busy || !programs.length" class="ml-auto rounded-xl bg-emerald-900 px-5 py-3 font-bold text-white disabled:opacity-50">{{ busy ? 'Submitting…' : step === 3 ? 'Submit application' : 'Continue' }}</button>
-          </div>
-        </fieldset>
-      </form>
-      <a href="/" class="mt-6 inline-block text-sm text-emerald-800 underline">Return home / sign in</a>
-    </template>
   </section>
 </template>
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ApiRequestError, portalApi } from '../../services/api';
+// Shared control styling: same tokens as the sign-in panel (rounded-2xl, navy focus ring, theme-aware via the slate/emerald/red remaps)
+const fieldClass = 'block w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-800 focus:ring-2 focus:ring-emerald-800/15 aria-[invalid=true]:border-red-700 aria-[invalid=true]:ring-red-700/15';
 const steps = ['Applicant details', 'Academic details', 'Supporting documents', 'Review and submit'];
 const form = reactive({ name: '', email: '', contact_number: '', program: '', student_type: 'new', year_level: '1', educational_background: '', previous_school: '' });
 type FieldKey = keyof typeof form;
@@ -143,9 +160,3 @@ async function advance() {
 }
 onMounted(loadOptions);
 </script>
-<style scoped>
-.field { display: block; width: 100%; margin-top: .4rem; padding: .7rem; border: 1px solid #cbd5e1; border-radius: .6rem; background: white; }
-.field:focus { outline: 2px solid #047857; outline-offset: 2px; }
-.field[aria-invalid="true"] { border-color: #b91c1c; }
-button:focus-visible, a:focus-visible { outline: 2px solid #047857; outline-offset: 3px; }
-</style>

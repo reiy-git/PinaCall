@@ -11,7 +11,7 @@
       <div
         v-for="toast in toasts"
         :key="toast.id"
-        class="pointer-events-auto p-4 rounded-xl shadow-lg border flex items-start gap-3 bg-white text-slate-800"
+        class="pointer-events-auto p-4 rounded-2xl shadow-lg border flex items-start gap-3 bg-white text-slate-800"
         :class="{
           'border-emerald-500/40 bg-emerald-50/90 text-emerald-950': toast.type === 'success',
           'border-red-500/40 bg-red-50/90 text-red-950': toast.type === 'error',

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\DocumentRequest;
+use App\Models\QueueToken;
 use App\Models\Student;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DocumentRequestController extends Controller
 {
@@ -72,8 +74,8 @@ class DocumentRequestController extends Controller
             'copies' => $request->copies,
             'fee' => $totalFee,
             'payment_status' => 'unpaid',
-            'status' => 'submitted',
-            'remarks' => 'Request logged into Registrar queue. Proceed to Cashier for fee settlement.',
+            'status' => 'waiting_for_payment',
+            'remarks' => 'Request submitted. Proceed to campus kiosk to check in and enter the digital queue.',
         ]);
 
         return response()->json([
@@ -90,7 +92,7 @@ class DocumentRequestController extends Controller
             return response()->json(['message' => 'You are not authorized to update document requests.'], 403);
         }
         $request->validate([
-            'status' => 'nullable|in:submitted,processing,ready_for_pickup,released,rejected',
+            'status' => 'nullable|in:waiting_for_payment,submitted,processing,ready_for_pickup,released,rejected',
             'payment_status' => 'nullable|in:unpaid,paid',
             'remarks' => 'nullable|string',
         ]);
@@ -108,13 +110,14 @@ class DocumentRequestController extends Controller
                 return response()->json(['message' => 'A settled document fee cannot be reversed through the standard cashier workflow.'], 422);
             }
             $docRequest->payment_status = $request->payment_status;
-            if ($request->payment_status === 'paid' && $docRequest->status === 'submitted') {
+            if ($request->payment_status === 'paid' && in_array($docRequest->status, ['submitted', 'waiting_for_payment'], true)) {
                 $docRequest->status = 'processing';
             }
         }
 
         if ($request->has('status')) {
             $allowedTransitions = [
+                'waiting_for_payment' => ['submitted', 'rejected'],
                 'submitted' => ['processing', 'rejected'],
                 'processing' => ['ready_for_pickup', 'rejected'],
                 'ready_for_pickup' => ['released'],
@@ -139,12 +142,55 @@ class DocumentRequestController extends Controller
             $docRequest->remarks = $request->remarks;
         }
 
-        $docRequest->save();
+        DB::transaction(function () use ($docRequest, $request) {
+            $docRequest->save();
+
+            if ($request->status === 'ready_for_pickup') {
+                $this->ensureRegistrarToken($docRequest);
+            }
+
+            if ($request->status === 'released') {
+                QueueToken::where('document_request_id', $docRequest->id)
+                    ->where('service_stage', 'registrar')
+                    ->whereDate('queue_date', now()->toDateString())
+                    ->whereIn('status', ['waiting', 'serving'])
+                    ->update([
+                        'status' => 'completed',
+                        'completed_at' => now(),
+                    ]);
+            }
+        });
 
         return response()->json([
             'success' => true,
             'message' => 'Document request updated successfully.',
             'request' => $docRequest,
+        ]);
+    }
+
+    private function ensureRegistrarToken(DocumentRequest $docRequest): QueueToken
+    {
+        $existingToken = QueueToken::where('document_request_id', $docRequest->id)
+            ->where('service_stage', 'registrar')
+            ->whereDate('queue_date', now()->toDateString())
+            ->whereNotIn('status', ['completed', 'no_show', 'skipped'])
+            ->first();
+
+        if ($existingToken) {
+            return $existingToken;
+        }
+
+        $sequence = QueueToken::nextSequence('registrar');
+
+        return QueueToken::create([
+            'token_number' => QueueToken::generateTokenNumber('registrar', $sequence),
+            'daily_sequence' => $sequence,
+            'student_id' => $docRequest->student_id,
+            'document_request_id' => $docRequest->id,
+            'service_stage' => 'registrar',
+            'status' => 'waiting',
+            'queue_date' => now()->toDateString(),
+            'checked_in_at' => now(),
         ]);
     }
 }

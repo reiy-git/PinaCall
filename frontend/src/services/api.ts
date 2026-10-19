@@ -9,10 +9,39 @@ import type {
   AcademicSection,
   DocumentRequest,
   DashboardStats,
+  QueueToken,
+  LobbyDisplayData,
+  StaffQueueData,
+  QueueStatusResponse,
+  ServiceStage,
 } from '../types';
 import { resetPortalPage } from './navigation';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+
+export interface EnrolleeApplication {
+  id: number;
+  name: string;
+  email: string;
+  contact_number: string;
+  program: string;
+  year_level: number;
+  student_type: string;
+  educational_background: string;
+  previous_school?: string | null;
+  reference: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  remarks?: string | null;
+  documents: Array<{ name: string; index: number }>;
+  email_sent_at?: string | null;
+}
+
+export interface EnrolleePage {
+  data: EnrolleeApplication[];
+  current_page: number;
+  last_page: number;
+  total: number;
+}
 
 export class ApiRequestError extends Error {
   readonly status: number;
@@ -66,32 +95,32 @@ export function showToast(type: 'success' | 'error' | 'info' | 'warning', title:
 }
 
 // Shared API fetch with explicit errors
-async function apiFetch<T>(endpoint: string, options: RequestInit = {}, preserveView = false): Promise<T> {
+async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   try {
     const res = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers: {
-        ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+        ...(typeof FormData !== 'undefined' && options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
         Accept: 'application/json',
         ...(authState.token ? { Authorization: `Bearer ${authState.token}` } : {}),
         ...(options.headers || {}),
       },
     });
-    const data = await res.json().catch(() => ({}));
+    const data = await res.json().catch(() => ({})) as { message?: string; errors?: Record<string, string[] | string> };
     if (!res.ok) {
-      if (res.status === 422 && data.errors) {
-        const firstError = Object.values(data.errors).flat()[0];
-        throw new ApiRequestError(typeof firstError === 'string' ? firstError : data.message || 'Please check the information and try again.', res.status, data.errors);
-      }
-      if (data.code === 'PASSWORD_CHANGE_REQUIRED') window.location.assign('/set-password');
-      throw new ApiRequestError(data.message || `Request failed (${res.status}).`, res.status);
+      const errors = Object.fromEntries(Object.entries(data.errors || {}).map(([field, messages]) => [
+        field,
+        Array.isArray(messages) ? messages.filter((message): message is string => typeof message === 'string') : [messages],
+      ]));
+      const firstError = Object.values(errors).flat()[0];
+      throw new ApiRequestError(firstError || data.message || `Request failed (${res.status}).`, res.status, errors);
     }
     authState.isLiveApi = true;
     authState.serviceUnavailable = false;
-    return data;
+    return data as T;
   } catch (err) {
     authState.isLiveApi = false;
-    if (!preserveView && (err instanceof TypeError || (err instanceof ApiRequestError && err.status >= 500))) authState.serviceUnavailable = true;
+    if (err instanceof TypeError || (err instanceof ApiRequestError && err.status >= 500)) authState.serviceUnavailable = true;
     console.warn(`PINACALL request to ${endpoint} failed:`, err);
     throw err;
   }
@@ -110,7 +139,6 @@ export const portalApi = {
     try {
       const res = await apiFetch<{ success: boolean; user: User }>('/auth/me');
       authState.user = res.user;
-      if (res.user.must_change_password) window.history.replaceState({}, '', '/set-password');
       resetPortalPage(res.user.role);
     } catch (error) {
       if (error instanceof TypeError || (error instanceof ApiRequestError && error.status >= 500)) {
@@ -132,7 +160,6 @@ export const portalApi = {
       authState.token = res.access_token;
       sessionStorage.setItem('pinacall_access_token', res.access_token);
       authState.user = res.user;
-      if (res.user.must_change_password) window.history.replaceState({}, '', '/set-password');
       resetPortalPage(res.user.role);
       authState.isLiveApi = true;
       showToast('success', 'Logged In', `Welcome back, ${res.user.name}`);
@@ -156,32 +183,79 @@ export const portalApi = {
     showToast('info', 'Signed Out', 'You have been logged out of the portal.');
   },
 
-  async getEnrollmentOptions(): Promise<{ programs: string[]; document_guidance: string }> {
-    return apiFetch('/enrollees/options', {}, true);
-  },
-  async applyEnrollee(payload: FormData): Promise<{ reference: string }> {
-    return apiFetch('/enrollees/apply', { method: 'POST', body: payload }, true);
-  },
-  async getEnrollees(status: string, page = 1): Promise<EnrolleePage> {
-    return apiFetch(`/admin/enrollees?status=${encodeURIComponent(status)}&page=${page}`);
-  },
-  async decideEnrollee(id: number, decision: 'approve' | 'reject' | 'resend', remarks = '') {
-    return apiFetch(`/admin/enrollees/${id}/${decision}`, { method: 'POST', body: JSON.stringify({ remarks }) });
-  },
-  async downloadEnrolleeDocument(id: number, index: number) {
-    const response = await fetch(`${API_BASE_URL}/admin/enrollees/${id}/documents/${index}`, {
-      headers: { Authorization: `Bearer ${authState.token}` },
+  async register(payload: { name: string; email: string; password: string; student_type: string; course_program: string; year_level: number }): Promise<User> {
+    const res = await apiFetch<{ success: boolean; user: User; access_token: string }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
-    if (!response.ok) throw new Error('Document download failed.');
-    const url = URL.createObjectURL(await response.blob());
-    const link = document.createElement('a'); link.href = url; link.download = 'application-document'; link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    authState.token = res.access_token;
+    sessionStorage.setItem('pinacall_access_token', res.access_token);
+    authState.user = res.user;
+    resetPortalPage(res.user.role);
+    showToast('success', 'Registration received', 'Your PINACALL profile was created. Complete your enrollment application next.');
+    return res.user;
   },
-  async firstLoginReset(payload: { current_password: string; password: string; password_confirmation: string }) {
-    await apiFetch('/auth/first-login-reset', { method: 'POST', body: JSON.stringify(payload) });
-    authState.token = null; authState.user = null;
+
+  async firstLoginReset(payload: { current_password: string; password: string; password_confirmation: string }): Promise<void> {
+    await apiFetch('/auth/first-login-reset', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    authState.token = null;
     sessionStorage.removeItem('pinacall_access_token');
-    window.location.assign('/');
+    authState.user = null;
+    resetPortalPage(null);
+    showToast('success', 'Password Set', 'Sign in again with your new password.');
+  },
+
+  async getEnrollmentOptions(): Promise<{ programs: string[]; document_guidance: string }> {
+    return apiFetch('/enrollees/options');
+  },
+
+  async applyEnrollee(payload: FormData): Promise<{ reference: string }> {
+    return apiFetch('/enrollees/apply', {
+      method: 'POST',
+      body: payload,
+    });
+  },
+
+  async getEnrollees(status: string, page: number): Promise<EnrolleePage> {
+    const params = new URLSearchParams({ status, page: String(page) });
+    return apiFetch(`/admin/enrollees?${params}`);
+  },
+
+  async downloadEnrolleeDocument(id: number, index: number): Promise<void> {
+    const endpoint = `/admin/enrollees/${id}/documents/${index}`;
+    try {
+      const headers = new Headers({ Accept: 'application/octet-stream' });
+      if (authState.token) headers.set('Authorization', `Bearer ${authState.token}`);
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, { headers });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { message?: string };
+        throw new ApiRequestError(data.message || `Request failed (${res.status}).`, res.status);
+      }
+
+      authState.isLiveApi = true;
+      authState.serviceUnavailable = false;
+      const blobUrl = URL.createObjectURL(await res.blob());
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = res.headers.get('Content-Disposition')?.match(/filename="?([^";]+)"?/i)?.[1] || `application-document-${id}-${index + 1}`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
+    } catch (error) {
+      authState.isLiveApi = false;
+      if (error instanceof TypeError || (error instanceof ApiRequestError && error.status >= 500)) authState.serviceUnavailable = true;
+      console.warn(`PINACALL request to ${endpoint} failed:`, error);
+      throw error;
+    }
+  },
+
+  async decideEnrollee(id: number, decision: 'approve' | 'reject' | 'resend', remarks: string): Promise<void> {
+    await apiFetch(`/admin/enrollees/${id}/${decision}`, {
+      method: 'POST',
+      body: JSON.stringify(decision === 'resend' ? {} : { remarks }),
+    });
   },
 
   // Applications
@@ -422,12 +496,50 @@ export const portalApi = {
     const res = await apiFetch<{ success: boolean; stats: DashboardStats }>('/dashboard/stats');
     return res.stats;
   },
-};
 
-export interface Enrollee {
-  id: number; reference: string; name: string; email: string; contact_number: string;
-  program: string; year_level: number; student_type: string; educational_background: string; previous_school?: string | null;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED'; remarks: string | null;
-  documents: { name: string; index: number }[]; email_sent_at: string | null;
-}
-export interface EnrolleePage { data: Enrollee[]; current_page: number; last_page: number; total: number }
+  // Queue Management
+  async kioskCheckin(studentNumber: string): Promise<{ success: boolean; message: string; token?: QueueToken; already_checked_in?: boolean }> {
+    return apiFetch('/queue/checkin', {
+      method: 'POST',
+      body: JSON.stringify({ student_number: studentNumber }),
+    });
+  },
+
+  async getLobbyDisplay(): Promise<{ success: boolean } & LobbyDisplayData> {
+    return apiFetch('/queue/lobby');
+  },
+
+  async getQueueStatus(studentNumber: string): Promise<{ success: boolean } & QueueStatusResponse> {
+    return apiFetch(`/queue/status?student_number=${encodeURIComponent(studentNumber)}`);
+  },
+
+  async getStaffQueue(serviceStage: ServiceStage): Promise<{ success: boolean } & StaffQueueData> {
+    return apiFetch(`/queue/staff?service_stage=${serviceStage}`);
+  },
+
+  async callNextInQueue(serviceStage: ServiceStage, windowNumber: string): Promise<{ success: boolean; message: string; token?: QueueToken }> {
+    return apiFetch('/queue/call-next', {
+      method: 'POST',
+      body: JSON.stringify({ service_stage: serviceStage, window_number: windowNumber }),
+    });
+  },
+
+  async recallDisplay(tokenId: number): Promise<{ success: boolean; message: string; token: QueueToken }> {
+    return apiFetch(`/queue/${tokenId}/recall`, { method: 'POST' });
+  },
+
+  async markNoShow(tokenId: number): Promise<{ success: boolean; message: string; token: QueueToken }> {
+    return apiFetch(`/queue/${tokenId}/no-show`, { method: 'POST' });
+  },
+
+  async completeTransaction(tokenId: number, action: 'pay_and_process' | 'release_document'): Promise<{ success: boolean; message: string; token: QueueToken }> {
+    return apiFetch(`/queue/${tokenId}/complete`, {
+      method: 'POST',
+      body: JSON.stringify({ action }),
+    });
+  },
+
+  async markReadyForPickup(tokenId: number): Promise<{ success: boolean; message: string; token: QueueToken }> {
+    return apiFetch(`/queue/${tokenId}/ready-for-pickup`, { method: 'POST' });
+  },
+};

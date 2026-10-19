@@ -8,6 +8,7 @@ use App\Http\Controllers\EnrolleeController;
 use App\Http\Controllers\EnrollmentApplicationController;
 use App\Http\Controllers\GradesController;
 use App\Http\Controllers\PortalAdminController;
+use App\Http\Controllers\QueueController;
 use App\Http\Controllers\SectionController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,6 +16,11 @@ use Illuminate\Support\Facades\Route;
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
 Route::get('/enrollees/options', [EnrolleeController::class, 'options']);
 Route::post('/enrollees/apply', [EnrolleeController::class, 'apply'])->middleware('throttle:register');
+
+// Public queue endpoints (no auth required — kiosk terminals and lobby displays)
+Route::post('/queue/checkin', [QueueController::class, 'checkin']);
+Route::get('/queue/lobby', [QueueController::class, 'lobbyDisplay']);
+Route::get('/queue/status', [QueueController::class, 'queueStatus']);
 
 Route::middleware('portal.token')->group(function () {
     Route::post('/auth/first-login-reset', [AuthController::class, 'firstLoginReset'])->middleware('throttle:login');
@@ -60,4 +66,12 @@ Route::middleware('portal.token')->group(function () {
     Route::patch('/admin/users/{user}', [PortalAdminController::class, 'updateUser']);
     Route::post('/admin/courses', [PortalAdminController::class, 'storeCourse']);
     Route::patch('/admin/courses/{course}', [PortalAdminController::class, 'updateCourse']);
+
+    // Queue management (staff-authenticated)
+    Route::get('/queue/staff', [QueueController::class, 'staffQueue']);
+    Route::post('/queue/call-next', [QueueController::class, 'callNext']);
+    Route::post('/queue/{id}/recall', [QueueController::class, 'recallDisplay']);
+    Route::post('/queue/{id}/no-show', [QueueController::class, 'markNoShow']);
+    Route::post('/queue/{id}/complete', [QueueController::class, 'completeTransaction']);
+    Route::post('/queue/{id}/ready-for-pickup', [QueueController::class, 'markReadyForPickup']);
 });

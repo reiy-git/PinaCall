@@ -1,10 +1,10 @@
 <template>
   <section class="space-y-6">
-    <header class="rounded-2xl border border-emerald-900/10 bg-white p-5 shadow-sm sm:p-7">
-      <p class="text-xs font-bold uppercase tracking-[0.14em] text-emerald-800">
+    <header class="rounded-3xl border border-emerald-900/10 bg-white p-5 shadow-sm sm:p-7">
+      <p class="text-xs font-bold uppercase tracking-wider text-emerald-800">
         {{ mode === 'department' ? 'Department academic affairs' : mode === 'faculty' ? 'Faculty teaching assignments' : 'Enrollment' }}
       </p>
-      <h2 class="mt-2 text-2xl font-bold tracking-tight text-slate-950">
+      <h2 class="mt-2 text-2xl font-bold tracking-tight text-slate-900">
         {{ mode === 'department' ? 'Subjects, sections, and rosters' : mode === 'faculty' ? 'My assigned sections' : 'Available course sections' }}
       </h2>
       <p class="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
@@ -16,9 +16,9 @@
       </p>
     </header>
 
-    <div v-if="mode === 'department'" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <div v-if="mode === 'department'" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
       <div class="mb-5">
-        <h3 class="text-base font-bold text-slate-950">Create a section offering</h3>
+        <h3 class="text-base font-bold text-slate-900">Create a section offering</h3>
         <p class="mt-1 text-sm text-slate-600">Choose an approved subject, faculty member, term, meeting time, and enrollment capacity.</p>
       </div>
       <form class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" @submit.prevent="createSection">
@@ -88,19 +88,19 @@
       </form>
     </div>
 
-    <div v-if="errorMessage" role="alert" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{{ errorMessage }}</div>
-    <div v-if="loading" class="rounded-xl border border-slate-200 bg-white px-5 py-8 text-center text-sm text-slate-600">Loading section information…</div>
-    <div v-else-if="sections.length === 0" class="rounded-xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center">
+    <div v-if="errorMessage" role="alert" class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{{ errorMessage }}</div>
+    <div v-if="loading" class="rounded-2xl border border-slate-200 bg-white px-5 py-8 text-center text-sm text-slate-600">Loading section information…</div>
+    <div v-else-if="sections.length === 0" class="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center">
       <h3 class="font-semibold text-slate-900">No sections to display</h3>
       <p class="mt-1 text-sm text-slate-600">{{ emptyMessage }}</p>
     </div>
 
     <div v-else class="grid gap-4 xl:grid-cols-2">
-      <article v-for="section in sections" :key="section.id" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <article v-for="section in sections" :key="section.id" class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div class="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-start sm:justify-between">
           <div class="min-w-0">
             <p class="text-xs font-bold uppercase tracking-wide text-emerald-800">{{ section.course?.code }} · {{ section.section_code }}</p>
-            <h3 class="mt-1 text-lg font-bold text-slate-950">{{ section.course?.title || 'Subject offering' }}</h3>
+            <h3 class="mt-1 text-lg font-bold text-slate-900">{{ section.course?.title || 'Subject offering' }}</h3>
             <p class="mt-1 text-sm text-slate-600">{{ section.program }} · Year {{ section.year_level }}</p>
           </div>
           <span class="w-fit rounded-full px-2.5 py-1 text-xs font-bold capitalize" :class="section.status === 'open' ? 'bg-emerald-100 text-emerald-800' : section.status === 'draft' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'">{{ section.status }}</span>
@@ -136,7 +136,7 @@
           <h4 class="text-sm font-bold text-slate-900">{{ gradebook ? 'Section gradebook' : 'Enrolled students' }} ({{ selectedRoster.students?.length ?? 0 }})</h4>
           <p v-if="gradebook" class="mt-1 text-xs text-slate-600">Enter valid ratings from 1.00 to 5.00. Saved grades remain private until you explicitly release them.</p>
           <p v-if="rosterError" class="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">{{ rosterError }}</p>
-          <div v-if="selectedRoster.students?.length && gradebook" class="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <div v-if="selectedRoster.students?.length && gradebook" class="mt-3 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
             <table class="w-full min-w-[680px] text-left text-sm">
               <thead class="bg-slate-100 text-xs uppercase tracking-wide text-slate-600"><tr><th class="px-3 py-2">Student</th><th class="px-3 py-2">Student number</th><th class="px-3 py-2 text-center">Midterm</th><th class="px-3 py-2 text-center">Final</th><th class="px-3 py-2 text-center">Rating</th><th class="px-3 py-2">Grade status</th><th class="px-3 py-2"></th></tr></thead>
               <tbody class="divide-y divide-slate-100">
