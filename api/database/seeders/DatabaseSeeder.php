@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Clearance;
 use App\Models\AcademicSection;
+use App\Models\Clearance;
 use App\Models\Course;
 use App\Models\DocumentRequest;
 use App\Models\Enrollment;
@@ -22,6 +22,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call(PhysicalQueueTokenSeeder::class);
+
         // 1. Staff and Admin Personas
         $admin = User::create([
             'name' => 'System Administrator',
@@ -90,7 +92,7 @@ class DatabaseSeeder extends Seeder
                 'academic_year' => '2026-2027',
                 'semester' => '1st Semester',
                 'schedule' => $course->schedule,
-                'room' => 'CCS-' . (100 + $course->year_level),
+                'room' => 'CCS-'.(100 + $course->year_level),
                 'capacity' => 40,
                 'status' => 'open',
             ]);
@@ -205,7 +207,7 @@ class DatabaseSeeder extends Seeder
                 'academic_year' => '2026-2027',
                 'educational_background' => "Graduate / Previous student of {$st['school']}. Applied with complete entrance credentials.",
                 'previous_school' => $st['school'],
-                'contact_number' => '+63 917 ' . rand(100, 999) . ' ' . rand(1000, 9999),
+                'contact_number' => '+63 917 '.rand(100, 999).' '.rand(1000, 9999),
                 'address' => 'Quezon City, Metro Manila, Philippines',
                 'emergency_contact' => 'Parent/Guardian (+63 918 555 1234)',
                 'submitted_documents' => ['Form 137 / TOR', 'Certificate of Good Moral', 'PSA Birth Certificate', '2x2 ID Photo'],
@@ -260,7 +262,7 @@ class DatabaseSeeder extends Seeder
                     'semester' => '1st Semester',
                     'midterm_grade' => $midterm,
                     'final_grade' => $final,
-                    'grade' => (string)$grade,
+                    'grade' => (string) $grade,
                     'status' => 'enrolled',
                     'grades_released' => true,
                     'remarks' => $grade <= 3.0 ? 'Passed' : 'Conditional',
@@ -281,7 +283,7 @@ class DatabaseSeeder extends Seeder
                 'copies' => 2,
                 'fee' => 300.00,
                 'payment_status' => $cl['cashier'] ? 'paid' : 'unpaid',
-                'status' => $cl['cashier'] ? 'processing' : 'submitted',
+                'status' => $cl['cashier'] ? 'processing' : 'waiting_for_payment',
                 'remarks' => 'Express processing requested',
             ]);
 

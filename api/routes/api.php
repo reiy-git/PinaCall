@@ -17,10 +17,8 @@ Route::post('/auth/login', [AuthController::class, 'login'])->middleware('thrott
 Route::get('/enrollees/options', [EnrolleeController::class, 'options']);
 Route::post('/enrollees/apply', [EnrolleeController::class, 'apply'])->middleware('throttle:register');
 
-// Public queue endpoints (no auth required — kiosk terminals and lobby displays)
-Route::post('/queue/checkin', [QueueController::class, 'checkin']);
+// Public lobby data is anonymous and contains generated queue tickets only.
 Route::get('/queue/lobby', [QueueController::class, 'lobbyDisplay']);
-Route::get('/queue/status', [QueueController::class, 'queueStatus']);
 
 Route::middleware('portal.token')->group(function () {
     Route::post('/auth/first-login-reset', [AuthController::class, 'firstLoginReset'])->middleware('throttle:login');
@@ -67,11 +65,20 @@ Route::middleware('portal.token')->group(function () {
     Route::post('/admin/courses', [PortalAdminController::class, 'storeCourse']);
     Route::patch('/admin/courses/{course}', [PortalAdminController::class, 'updateCourse']);
 
+    // Queue check-in and status are authenticated and bound to the signed-in student.
+    Route::post('/queue/activate', [QueueController::class, 'activatePhysicalToken']);
+    Route::get('/queue/status', [QueueController::class, 'authenticatedQueueStatus']);
+
     // Queue management (staff-authenticated)
     Route::get('/queue/staff', [QueueController::class, 'staffQueue']);
     Route::post('/queue/call-next', [QueueController::class, 'callNext']);
     Route::post('/queue/{id}/recall', [QueueController::class, 'recallDisplay']);
     Route::post('/queue/{id}/no-show', [QueueController::class, 'markNoShow']);
     Route::post('/queue/{id}/complete', [QueueController::class, 'completeTransaction']);
+    Route::get('/queue/physical-tokens', [QueueController::class, 'physicalTokens']);
+    Route::get('/queue/physical-tokens/{physicalToken}/history', [QueueController::class, 'physicalTokenHistory']);
+    Route::get('/queue/physical-tokens/{physicalToken}/qr', [QueueController::class, 'physicalTokenQr']);
+    Route::post('/queue/physical-tokens/{physicalToken}/reset', [QueueController::class, 'resetPhysicalToken']);
+    Route::post('/queue/physical-tokens/{physicalToken}/missing', [QueueController::class, 'markPhysicalTokenMissing']);
     Route::post('/queue/{id}/ready-for-pickup', [QueueController::class, 'markReadyForPickup']);
 });

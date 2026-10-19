@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\DocumentRequest;
+use App\Models\PhysicalQueueToken;
+use App\Models\PhysicalQueueTokenAttempt;
+use App\Models\PhysicalQueueTokenEvent;
 use App\Models\QueueToken;
 use App\Models\Student;
 use Illuminate\Http\Request;
@@ -10,86 +13,143 @@ use Illuminate\Support\Facades\DB;
 
 class QueueController extends Controller
 {
-    /**
-     * Kiosk Check-In: Student enters their Student ID at the physical kiosk.
-     * Validates an active document request in 'waiting_for_payment' status,
-     * generates a sequential queue token, and activates it.
-     */
-    public function checkin(Request $request)
+    private const UNAVAILABLE_TOKEN_MESSAGE = 'This queue token is unavailable. Please use an available token at the service area or ask staff for assistance.';
+
+    public function activatePhysicalToken(Request $request)
     {
         $request->validate([
-            'student_number' => 'required|string',
+            'qr_secret' => 'required|string|min:32|max:255',
+            'document_request_id' => 'required|integer|exists:document_requests,id',
         ]);
 
-        $normalizedStudentNumber = self::normalizeStudentNumber($request->student_number);
-        $student = Student::whereRaw("UPPER(REPLACE(REPLACE(REPLACE(TRIM(student_number), '-', ''), ' ', ''), '_', '')) = ?", [$normalizedStudentNumber])->first();
-
-        if (!$student) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Student ID not found. Please verify your Student ID and try again.',
-            ], 404);
+        $student = $request->user()->student;
+        if ($request->user()->role !== 'student' || ! $student || $student->status !== 'active') {
+            return response()->json(['message' => 'An active student account is required for queue check-in.'], 403);
         }
 
-        $checkIn = DB::transaction(function () use ($student) {
-            $existingToken = QueueToken::where('student_id', $student->id)
-                ->whereDate('queue_date', now()->toDateString())
-                ->whereNotIn('status', ['completed', 'no_show', 'skipped'])
-                ->lockForUpdate()
-                ->first();
+        $today = now()->toDateString();
+        $secretHash = hash('sha256', $request->qr_secret);
+        $physicalToken = PhysicalQueueToken::where('qr_secret_hash', $secretHash)->first();
+        if (! $physicalToken) {
+            return response()->json(['message' => self::UNAVAILABLE_TOKEN_MESSAGE], 422);
+        }
 
-            if ($existingToken) {
-                return [$existingToken, true];
+        $sameStudentAttempts = PhysicalQueueTokenAttempt::where('physical_queue_token_id', $physicalToken->id)
+            ->where('student_id', $student->id)
+            ->whereDate('service_date', $today)
+            ->count();
+        if ($sameStudentAttempts >= 3) {
+            $this->recordAttempt($physicalToken, $student, 'blocked', 'student_attempt_limit');
+
+            return response()->json(['message' => 'This token was already used or attempted today. Please use another available token or ask staff for help.'], 429);
+        }
+
+        return DB::transaction(function () use ($request, $student, $physicalToken, $today) {
+            $physicalToken = PhysicalQueueToken::lockForUpdate()->findOrFail($physicalToken->id);
+            if ($physicalToken->status !== 'available') {
+                $this->recordAttempt($physicalToken, $student, 'unavailable', 'token_unavailable');
+                $this->lockRepeatedlyFailedToken($physicalToken, $today);
+
+                return response()->json(['message' => self::UNAVAILABLE_TOKEN_MESSAGE], 422);
             }
 
-            // Submitted unpaid requests can still be waiting for cashier check-in.
-            $docRequest = DocumentRequest::where('student_id', $student->id)
-                ->whereIn('status', ['waiting_for_payment', 'submitted'])
-                ->where('payment_status', 'unpaid')
-                ->oldest()
+            $existingTicket = QueueToken::where('student_id', $student->id)
+                ->whereDate('queue_date', $today)
+                ->whereIn('status', ['waiting', 'serving'])
                 ->lockForUpdate()
                 ->first();
+            if ($existingTicket) {
+                $this->recordAttempt($physicalToken, $student, 'blocked', 'active_ticket');
 
-            if (!$docRequest) {
-                return [null, false];
+                return response()->json([
+                    'success' => true,
+                    'message' => 'You already have an active queue ticket.',
+                    'token' => $existingTicket->load('documentRequest'),
+                    'already_checked_in' => true,
+                ]);
             }
 
-            $sequence = QueueToken::nextSequence('cashier');
-            $tokenNumber = QueueToken::generateTokenNumber('cashier', $sequence);
+            $documentRequest = DocumentRequest::where('id', $request->integer('document_request_id'))
+                ->where('student_id', $student->id)
+                ->lockForUpdate()
+                ->first();
+            if (! $documentRequest || ! $this->requestIsEligibleForStage($documentRequest, $physicalToken->service_stage)) {
+                $this->recordAttempt($physicalToken, $student, 'blocked', 'ineligible_request');
 
-            $token = QueueToken::create([
-                'token_number' => $tokenNumber,
+                return response()->json(['message' => 'The selected request is not eligible for this queue.'], 422);
+            }
+
+            $sequence = QueueToken::nextSequence($physicalToken->service_stage);
+            $queueTicket = QueueToken::create([
+                'token_number' => QueueToken::generateTokenNumber($physicalToken->service_stage, $sequence),
                 'daily_sequence' => $sequence,
                 'student_id' => $student->id,
-                'document_request_id' => $docRequest->id,
-                'service_stage' => 'cashier',
+                'document_request_id' => $documentRequest->id,
+                'service_stage' => $physicalToken->service_stage,
                 'status' => 'waiting',
-                'queue_date' => now()->toDateString(),
+                'queue_date' => $today,
                 'checked_in_at' => now(),
             ]);
 
-            $docRequest->update(['status' => 'submitted']);
+            $physicalToken->update([
+                'status' => 'assigned',
+                'assigned_student_id' => $student->id,
+                'assigned_queue_token_id' => $queueTicket->id,
+                'assigned_at' => now(),
+            ]);
+            $this->recordAttempt($physicalToken, $student, 'assigned', 'activated', $queueTicket);
+            $this->recordEvent($physicalToken, 'assigned', $student->id, $queueTicket->id);
 
-            return [$token, false];
-        });
-
-        [$token, $alreadyCheckedIn] = $checkIn;
-
-        if (!$token) {
             return response()->json([
-                'success' => false,
-                'message' => 'No active request found. You must submit a document request through the PINACALL portal before checking in.',
-            ], 422);
-        }
+                'success' => true,
+                'message' => "Check-in successful. Your queue number is {$queueTicket->token_number}. Please keep your physical token and bring it to the window.",
+                'token' => $queueTicket->load('documentRequest'),
+            ], 201);
+        });
+    }
 
-        return response()->json([
-            'success' => true,
-            'message' => $alreadyCheckedIn
-                ? 'You already have an active queue token for today.'
-                : "Check-in successful! Your queue number is {$token->token_number}. Please wait for your number to be called.",
-            'token' => $token->load('documentRequest'),
-            'already_checked_in' => $alreadyCheckedIn,
-        ], $alreadyCheckedIn ? 200 : 201);
+    private function requestIsEligibleForStage(DocumentRequest $documentRequest, string $stage): bool
+    {
+        return $stage === 'cashier'
+            ? $documentRequest->status === 'waiting_for_payment' && $documentRequest->payment_status === 'unpaid'
+            : $documentRequest->status === 'ready_for_pickup' && $documentRequest->payment_status === 'paid';
+    }
+
+    private function recordAttempt(PhysicalQueueToken $physicalToken, Student $student, string $result, string $reason, ?QueueToken $queueTicket = null): void
+    {
+        PhysicalQueueTokenAttempt::create([
+            'physical_queue_token_id' => $physicalToken->id,
+            'student_id' => $student->id,
+            'queue_token_id' => $queueTicket?->id,
+            'service_date' => now()->toDateString(),
+            'result' => $result,
+            'reason' => $reason,
+        ]);
+    }
+
+    private function recordEvent(PhysicalQueueToken $physicalToken, string $eventType, ?int $studentId = null, ?int $queueTicketId = null, ?int $staffId = null, ?string $notes = null): void
+    {
+        PhysicalQueueTokenEvent::create([
+            'physical_queue_token_id' => $physicalToken->id,
+            'student_id' => $studentId,
+            'queue_token_id' => $queueTicketId,
+            'staff_id' => $staffId,
+            'event_type' => $eventType,
+            'notes' => $notes,
+        ]);
+    }
+
+    private function lockRepeatedlyFailedToken(PhysicalQueueToken $physicalToken, string $today): void
+    {
+        $differentStudents = PhysicalQueueTokenAttempt::where('physical_queue_token_id', $physicalToken->id)
+            ->whereDate('service_date', $today)
+            ->where('result', 'unavailable')
+            ->distinct('student_id')
+            ->count('student_id');
+        if ($differentStudents >= 5) {
+            $physicalToken->update(['status' => 'locked']);
+            $this->recordEvent($physicalToken, 'locked', notes: 'Five different students made failed activation attempts today.');
+        }
     }
 
     /**
@@ -105,10 +165,10 @@ class QueueController extends Controller
         $role = $request->user()->role;
         $stage = $request->service_stage;
 
-        if ($stage === 'cashier' && !in_array($role, ['cashier', 'admin'], true)) {
+        if ($stage === 'cashier' && ! in_array($role, ['cashier', 'admin'], true)) {
             return response()->json(['message' => 'Only cashier staff can manage the cashier queue.'], 403);
         }
-        if ($stage === 'registrar' && !in_array($role, ['registrar', 'admin'], true)) {
+        if ($stage === 'registrar' && ! in_array($role, ['registrar', 'admin'], true)) {
             return response()->json(['message' => 'Only registrar staff can manage the registrar queue.'], 403);
         }
 
@@ -132,7 +192,7 @@ class QueueController extends Controller
             ->orderBy('daily_sequence')
             ->first();
 
-        if (!$token) {
+        if (! $token) {
             return response()->json([
                 'success' => false,
                 'message' => 'No more students waiting in the queue.',
@@ -144,11 +204,16 @@ class QueueController extends Controller
             'window_number' => $request->window_number,
             'called_at' => now(),
         ]);
+        $physicalToken = PhysicalQueueToken::where('assigned_queue_token_id', $token->id)->first();
+        if ($physicalToken) {
+            $physicalToken->update(['status' => 'called']);
+            $this->recordEvent($physicalToken, 'called', $token->student_id, $token->id, $request->user()->id);
+        }
 
         return response()->json([
             'success' => true,
             'message' => "Now serving {$token->token_number} at {$request->window_number}.",
-            'token' => $token->load(['student.user', 'documentRequest']),
+            'token' => $token->load(['student.user', 'documentRequest', 'physicalQueueToken']),
         ]);
     }
 
@@ -158,10 +223,7 @@ class QueueController extends Controller
     public function recallDisplay(Request $request, $id)
     {
         $token = QueueToken::with(['student.user', 'documentRequest'])->findOrFail($id);
-
-        if (!$this->canManageStage($request, $token->service_stage)) {
-            return response()->json(['message' => 'You are not authorized to manage this queue.'], 403);
-        }
+        $this->authorizeStaffStage($request, $token->service_stage);
 
         if ($token->status !== 'serving') {
             return response()->json(['message' => 'Only currently serving tokens can be re-called.'], 422);
@@ -183,10 +245,7 @@ class QueueController extends Controller
     public function markNoShow(Request $request, $id)
     {
         $token = QueueToken::findOrFail($id);
-
-        if (!$this->canManageStage($request, $token->service_stage)) {
-            return response()->json(['message' => 'You are not authorized to manage this queue.'], 403);
-        }
+        $this->authorizeStaffStage($request, $token->service_stage);
 
         if ($token->status !== 'serving') {
             return response()->json(['message' => 'Only a currently serving token can be marked as no-show.'], 422);
@@ -213,121 +272,193 @@ class QueueController extends Controller
     {
         $request->validate([
             'action' => 'required|in:pay_and_process,release_document',
+            'physical_token_reference' => 'required|string|max:12',
         ]);
 
         $token = QueueToken::with('documentRequest')->findOrFail($id);
-
-        if (!$this->canManageStage($request, $token->service_stage)) {
-            return response()->json(['message' => 'You are not authorized to manage this queue.'], 403);
-        }
-
+        $this->authorizeStaffStage($request, $token->service_stage);
         if ($token->status !== 'serving') {
             return response()->json(['message' => 'Only a currently serving token can be completed.'], 422);
         }
 
-        $docRequest = $token->documentRequest;
-
-        if ($request->action === 'pay_and_process') {
-            // Cashier stage: mark payment as paid, move document to processing
-            if ($token->service_stage !== 'cashier') {
-                return response()->json(['message' => 'Payment processing is only available at the cashier stage.'], 422);
-            }
-
-            $docRequest->update([
-                'payment_status' => 'paid',
-                'status' => 'processing',
-                'remarks' => 'Payment received. Document is being processed.',
-            ]);
-
-            $token->update([
-                'status' => 'hold',
-                'completed_at' => now(),
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => "Payment for {$token->token_number} confirmed. Document is now in processing.",
-                'token' => $token->fresh()->load('documentRequest'),
-            ]);
+        $physicalToken = PhysicalQueueToken::where('assigned_queue_token_id', $token->id)->first();
+        if (! $physicalToken || $physicalToken->reference !== $request->physical_token_reference) {
+            return response()->json(['message' => 'The matching physical token must be returned before this service can be completed.'], 422);
         }
 
-        if ($request->action === 'release_document') {
-            // Registrar stage: release the document
-            if ($token->service_stage !== 'registrar') {
-                return response()->json(['message' => 'Document release is only available at the registrar stage.'], 422);
-            }
-            if ($docRequest->payment_status !== 'paid') {
-                return response()->json(['message' => 'Payment must be confirmed before document release.'], 422);
-            }
-
-            if ($docRequest->status !== 'released') {
-                $docRequest->update([
+        return DB::transaction(function () use ($request, $token, $physicalToken) {
+            $documentRequest = $token->documentRequest;
+            if ($request->action === 'pay_and_process') {
+                if ($token->service_stage !== 'cashier') {
+                    return response()->json(['message' => 'Payment processing is only available at the cashier stage.'], 422);
+                }
+                $documentRequest->update([
+                    'payment_status' => 'paid',
+                    'status' => 'processing',
+                    'remarks' => 'Payment received. Document is being processed.',
+                ]);
+                $token->update(['status' => 'hold', 'completed_at' => now()]);
+            } else {
+                if ($token->service_stage !== 'registrar' || $documentRequest->payment_status !== 'paid') {
+                    return response()->json(['message' => 'The document is not eligible for release.'], 422);
+                }
+                $documentRequest->update([
                     'status' => 'released',
                     'released_at' => now(),
                     'remarks' => 'Document released to student.',
                 ]);
+                $token->update(['status' => 'completed', 'completed_at' => now()]);
             }
 
-            $token->update([
-                'status' => 'completed',
-                'completed_at' => now(),
+            $physicalToken->update([
+                'status' => 'available',
+                'assigned_student_id' => null,
+                'assigned_queue_token_id' => null,
+                'last_reset_by_staff_id' => $request->user()->id,
+                'last_reset_at' => now(),
             ]);
+            $this->recordEvent($physicalToken, 'returned', $token->student_id, $token->id, $request->user()->id);
+            $this->recordEvent($physicalToken, 'reset', staffId: $request->user()->id);
 
             return response()->json([
                 'success' => true,
-                'message' => "Document for {$token->token_number} has been released and the queue ticket was completed.",
+                'message' => $request->action === 'pay_and_process'
+                    ? "Payment for {$token->token_number} confirmed. Document is now in processing."
+                    : "Document for {$token->token_number} has been released.",
                 'token' => $token->fresh()->load('documentRequest'),
             ]);
+        });
+    }
+
+    public function markPhysicalTokenMissing(Request $request, PhysicalQueueToken $physicalToken)
+    {
+        $this->authorizeStaffStage($request, $physicalToken->service_stage);
+        $physicalToken->update(['status' => 'missing']);
+        $this->recordEvent($physicalToken, 'missing', $physicalToken->assigned_student_id, $physicalToken->assigned_queue_token_id, $request->user()->id);
+
+        return response()->json(['success' => true, 'message' => 'Physical token marked missing and blocked from further use.']);
+    }
+
+    public function physicalTokens(Request $request)
+    {
+        $validated = $request->validate([
+            'service_stage' => 'required|in:cashier,registrar',
+        ]);
+        $stage = $validated['service_stage'];
+        $this->authorizeStaffStage($request, $stage);
+
+        $tokens = PhysicalQueueToken::with([
+            'assignedStudent.user',
+            'assignedQueueTicket.documentRequest',
+            'lastResetByStaff:id,name',
+        ])
+            ->where('service_stage', $stage)
+            ->orderBy('id')
+            ->get();
+
+        return response()->json(['success' => true, 'stage' => $stage, 'tokens' => $tokens]);
+    }
+
+    public function physicalTokenHistory(Request $request, PhysicalQueueToken $physicalToken)
+    {
+        $this->authorizeStaffStage($request, $physicalToken->service_stage);
+
+        return response()->json([
+            'success' => true,
+            'token' => $physicalToken->load([
+                'assignedStudent.user',
+                'assignedQueueTicket.documentRequest',
+                'events' => fn ($query) => $query->latest()->with([
+                    'student.user',
+                    'staff:id,name',
+                    'queueTicket.documentRequest',
+                ]),
+                'attempts' => fn ($query) => $query->latest()->with([
+                    'student.user',
+                    'queueTicket.documentRequest',
+                ]),
+            ]),
+        ]);
+    }
+
+    public function physicalTokenQr(Request $request, PhysicalQueueToken $physicalToken)
+    {
+        $this->authorizeStaffStage($request, $physicalToken->service_stage);
+        if (! $physicalToken->qr_secret_encrypted) {
+            return response()->json([
+                'message' => 'This token QR cannot be reprinted because its original secret is not recoverable. Replace the token through an administrator.',
+            ], 409);
         }
+
+        return response()->json([
+            'success' => true,
+            'reference' => $physicalToken->reference,
+            'service_stage' => $physicalToken->service_stage,
+            'qr_secret' => $physicalToken->qr_secret_encrypted,
+        ]);
+    }
+
+    public function resetPhysicalToken(Request $request, PhysicalQueueToken $physicalToken)
+    {
+        $this->authorizeStaffStage($request, $physicalToken->service_stage);
+        $activeTicket = $physicalToken->assignedQueueTicket()
+            ->whereIn('status', ['waiting', 'serving'])
+            ->exists();
+        if ($activeTicket) {
+            return response()->json([
+                'message' => 'This token is still linked to an active queue ticket. Complete or resolve that ticket before resetting the physical token.',
+            ], 422);
+        }
+
+        $previousStudentId = $physicalToken->assigned_student_id;
+        $previousQueueTokenId = $physicalToken->assigned_queue_token_id;
+        $physicalToken->update([
+            'status' => 'available',
+            'assigned_student_id' => null,
+            'assigned_queue_token_id' => null,
+            'last_reset_by_staff_id' => $request->user()->id,
+            'last_reset_at' => now(),
+        ]);
+        $this->recordEvent(
+            $physicalToken,
+            'reset',
+            $previousStudentId,
+            $previousQueueTokenId,
+            $request->user()->id,
+            'Physical token verified by staff.',
+        );
+
+        return response()->json(['success' => true, 'message' => 'Physical token has been reset and is available for use.']);
+    }
+
+    private function authorizeStaffStage(Request $request, string $stage): void
+    {
+        $allowedRoles = $stage === 'cashier' ? ['cashier', 'admin'] : ['registrar', 'admin'];
+        abort_unless(in_array($request->user()->role, $allowedRoles, true), 403, 'You are not authorized to manage this queue.');
     }
 
     /**
-     * Staff action: Mark a document as ready for pickup.
-     * This transitions the held token into the registrar queue.
+     * Staff action: Mark a paid document ready for pickup. The student must
+     * later activate a Registrar physical token; this action never queues them.
      */
     public function markReadyForPickup(Request $request, $id)
     {
         $token = QueueToken::with('documentRequest')->findOrFail($id);
-
-        if (!$this->canManageStage($request, $token->service_stage)) {
-            return response()->json(['message' => 'You are not authorized to manage this queue.'], 403);
+        $this->authorizeStaffStage($request, 'registrar');
+        if ($token->status !== 'hold' || $token->service_stage !== 'cashier' || $token->documentRequest->payment_status !== 'paid') {
+            return response()->json(['message' => 'Only paid documents in processing can be marked ready for pickup.'], 422);
         }
 
-        if ($token->status !== 'hold' || $token->service_stage !== 'cashier') {
-            return response()->json(['message' => 'Only held cashier tokens can be moved to the registrar queue.'], 422);
-        }
-
-        $docRequest = $token->documentRequest;
-        $docRequest->update([
+        $token->documentRequest->update([
             'status' => 'ready_for_pickup',
-            'remarks' => 'Document ready for pickup. Please proceed to the Registrar window.',
+            'remarks' => 'Document ready for pickup. Check in at the Registrar queue when you return.',
         ]);
-
-        // Create a new registrar queue token
-        $sequence = QueueToken::nextSequence('registrar');
-        $regTokenNumber = QueueToken::generateTokenNumber('registrar', $sequence);
-
-        $regToken = QueueToken::create([
-            'token_number' => $regTokenNumber,
-            'daily_sequence' => $sequence,
-            'student_id' => $token->student_id,
-            'document_request_id' => $token->document_request_id,
-            'service_stage' => 'registrar',
-            'status' => 'waiting',
-            'queue_date' => now()->toDateString(),
-            'checked_in_at' => now(),
-        ]);
-
-        // Mark original cashier token as completed
-        $token->update([
-            'status' => 'completed',
-            'completed_at' => now(),
-        ]);
+        $token->update(['status' => 'completed', 'completed_at' => now()]);
 
         return response()->json([
             'success' => true,
-            'message' => "Document ready for pickup. Registrar token {$regTokenNumber} issued.",
-            'token' => $regToken->load(['student.user', 'documentRequest']),
+            'message' => 'Document ready for pickup. The student must check in at the Registrar queue when they return.',
+            'token' => $token->fresh()->load(['student.user', 'documentRequest']),
         ]);
     }
 
@@ -339,29 +470,33 @@ class QueueController extends Controller
     {
         $today = now()->toDateString();
 
-        $cashierServing = QueueToken::with(['student.user', 'documentRequest'])
+        $cashierServing = QueueToken::query()
+            ->select(['id', 'token_number', 'service_stage', 'window_number', 'status', 'called_at'])
             ->where('service_stage', 'cashier')
             ->where('status', 'serving')
             ->whereDate('queue_date', $today)
             ->orderBy('called_at', 'desc')
             ->first();
 
-        $cashierUpcoming = QueueToken::where('service_stage', 'cashier')
-            ->where('status', 'waiting')
+        $cashierUpcoming = QueueToken::query()
+            ->select(['id', 'token_number', 'service_stage', 'status'])
+            ->where('service_stage', 'cashier')
             ->whereDate('queue_date', $today)
             ->orderBy('daily_sequence')
             ->limit(5)
             ->get();
 
-        $registrarServing = QueueToken::with(['student.user', 'documentRequest'])
+        $registrarServing = QueueToken::query()
+            ->select(['id', 'token_number', 'service_stage', 'window_number', 'status', 'called_at'])
             ->where('service_stage', 'registrar')
             ->where('status', 'serving')
             ->whereDate('queue_date', $today)
             ->orderBy('called_at', 'desc')
             ->first();
 
-        $registrarUpcoming = QueueToken::where('service_stage', 'registrar')
-            ->where('status', 'waiting')
+        $registrarUpcoming = QueueToken::query()
+            ->select(['id', 'token_number', 'service_stage', 'status'])
+            ->where('service_stage', 'registrar')
             ->whereDate('queue_date', $today)
             ->orderBy('daily_sequence')
             ->limit(5)
@@ -390,28 +525,24 @@ class QueueController extends Controller
     }
 
     /**
-     * Public/Student: Check queue status by student number.
+     * Authenticated: Check queue status for the signed-in student only.
      */
-    public function queueStatus(Request $request)
+    public function authenticatedQueueStatus(Request $request)
     {
-        $request->validate([
-            'student_number' => 'required|string',
-        ]);
-
-        $normalizedStudentNumber = self::normalizeStudentNumber($request->student_number);
-        $student = Student::whereRaw("UPPER(REPLACE(REPLACE(REPLACE(TRIM(student_number), '-', ''), ' ', ''), '_', '')) = ?", [$normalizedStudentNumber])->first();
-        if (!$student) {
-            return response()->json(['success' => false, 'message' => 'Student ID not found.'], 404);
+        $student = $request->user()->student;
+        if ($request->user()->role !== 'student' || ! $student || $student->status !== 'active') {
+            return response()->json(['message' => 'An active student account is required for queue status.'], 403);
         }
 
         $today = now()->toDateString();
-        $tokens = QueueToken::with('documentRequest')
+        $tokens = QueueToken::with(['documentRequest', 'physicalQueueToken'])
             ->where('student_id', $student->id)
             ->whereDate('queue_date', $today)
             ->orderBy('daily_sequence')
             ->get();
 
-        $activeToken = $tokens->whereNotIn('status', ['completed', 'no_show', 'skipped'])->first();
+        $activeToken = $tokens->first(fn (QueueToken $token) => ! in_array($token->status, ['completed', 'no_show', 'skipped'], true)
+            && ! ($token->status === 'hold' && in_array($token->documentRequest?->status, ['ready_for_pickup', 'released'], true)));
 
         $position = null;
         if ($activeToken && $activeToken->status === 'waiting') {
@@ -456,33 +587,33 @@ class QueueController extends Controller
         ]);
 
         $role = $request->user()->role;
-        if (!in_array($role, ['cashier', 'registrar', 'admin'], true)) {
+        if (! in_array($role, ['cashier', 'registrar', 'admin'], true)) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
         $today = now()->toDateString();
         $stage = $request->service_stage;
 
-        $serving = QueueToken::with(['student.user', 'documentRequest'])
+        $serving = QueueToken::with(['student.user', 'documentRequest', 'physicalQueueToken'])
             ->where('service_stage', $stage)
             ->where('status', 'serving')
             ->whereDate('queue_date', $today)
             ->get();
 
-        $waiting = QueueToken::with(['student.user', 'documentRequest'])
+        $waiting = QueueToken::with(['student.user', 'documentRequest', 'physicalQueueToken'])
             ->where('service_stage', $stage)
             ->where('status', 'waiting')
             ->whereDate('queue_date', $today)
             ->orderBy('daily_sequence')
             ->get();
 
-        $onHold = QueueToken::with(['student.user', 'documentRequest'])
+        $onHold = QueueToken::with(['student.user', 'documentRequest', 'physicalQueueToken'])
             ->where('service_stage', $stage)
             ->where('status', 'hold')
             ->whereDate('queue_date', $today)
             ->get();
 
-        $completed = QueueToken::with(['student.user', 'documentRequest'])
+        $completed = QueueToken::with(['student.user', 'documentRequest', 'physicalQueueToken'])
             ->where('service_stage', $stage)
             ->whereIn('status', ['completed', 'no_show', 'skipped'])
             ->whereDate('queue_date', $today)

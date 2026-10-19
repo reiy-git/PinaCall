@@ -3,7 +3,7 @@ import type { UserRole } from '../types';
 
 export type PortalPage =
   | 'overview' | 'enrollment' | 'clearance' | 'grades' | 'documents'
-  | 'applications' | 'students' | 'clearances' | 'gradebook'
+  | 'applications' | 'students' | 'clearances' | 'queue' | 'gradebook'
   | 'sections' | 'analytics' | 'users' | 'courses';
 
 const defaultPageByRole: Record<UserRole, PortalPage> = {
@@ -17,8 +17,8 @@ const defaultPageByRole: Record<UserRole, PortalPage> = {
 
 const pagesByRole: Record<UserRole, PortalPage[]> = {
   student: ['overview', 'enrollment', 'clearance', 'grades', 'documents'],
-  registrar: ['applications', 'students', 'documents'],
-  cashier: ['clearances', 'documents'],
+  registrar: ['applications', 'students', 'documents', 'queue'],
+  cashier: ['clearances', 'documents', 'queue'],
   department_head: ['clearances', 'grades', 'sections'],
   faculty: ['sections', 'gradebook'],
   admin: ['analytics', 'users', 'courses'],
@@ -68,10 +68,12 @@ export const navItemsByRole: Record<UserRole, PortalNavItem[]> = {
     { page: 'applications', label: 'Admissions and applications' },
     { page: 'students', label: 'Student registry' },
     { page: 'documents', label: 'Document request fulfillment' },
+    { page: 'queue', label: 'Queue & QR Tokens' },
   ],
   cashier: [
     { page: 'clearances', label: 'Financial clearance ledger' },
     { page: 'documents', label: 'Document payment collection' },
+    { page: 'queue', label: 'Queue & QR Tokens' },
   ],
   department_head: [
     { page: 'clearances', label: 'Department and dean clearance' },
@@ -127,4 +129,5 @@ export const pageIcons: Record<PortalPage, string> = {
   analytics: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z',
   users: 'M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z',
   courses: 'M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25',
+  queue: 'M3.75 4.5h4.5v4.5h-4.5v-4.5Zm0 10.5h4.5v4.5h-4.5V15Zm12-10.5h4.5v4.5h-4.5v-4.5Zm0 12h1.5m-1.5 2.25h4.5m-9-12.75h1.5m-1.5 3h1.5m3 3h1.5m-4.5 0h-1.5m0 3h1.5',
 };

@@ -1,4 +1,4 @@
-import { reactive, ref } from 'vue';
+﻿import { reactive, ref } from 'vue';
 import type {
   User,
   Course,
@@ -8,6 +8,7 @@ import type {
   Enrollment,
   AcademicSection,
   DocumentRequest,
+  PhysicalQueueTokenRecord,
   DashboardStats,
   QueueToken,
   LobbyDisplayData,
@@ -17,7 +18,7 @@ import type {
 } from '../types';
 import { resetPortalPage } from './navigation';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export interface EnrolleeApplication {
   id: number;
@@ -181,19 +182,6 @@ export const portalApi = {
     authState.personas = [];
     resetPortalPage(null);
     showToast('info', 'Signed Out', 'You have been logged out of the portal.');
-  },
-
-  async register(payload: { name: string; email: string; password: string; student_type: string; course_program: string; year_level: number }): Promise<User> {
-    const res = await apiFetch<{ success: boolean; user: User; access_token: string }>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-    authState.token = res.access_token;
-    sessionStorage.setItem('pinacall_access_token', res.access_token);
-    authState.user = res.user;
-    resetPortalPage(res.user.role);
-    showToast('success', 'Registration received', 'Your PINACALL profile was created. Complete your enrollment application next.');
-    return res.user;
   },
 
   async firstLoginReset(payload: { current_password: string; password: string; password_confirmation: string }): Promise<void> {
@@ -498,10 +486,10 @@ export const portalApi = {
   },
 
   // Queue Management
-  async kioskCheckin(studentNumber: string): Promise<{ success: boolean; message: string; token?: QueueToken; already_checked_in?: boolean }> {
-    return apiFetch('/queue/checkin', {
+  async activateQueueToken(qrSecret: string, documentRequestId: number): Promise<{ success: boolean; message: string; token?: QueueToken; already_checked_in?: boolean }> {
+    return apiFetch('/queue/activate', {
       method: 'POST',
-      body: JSON.stringify({ student_number: studentNumber }),
+      body: JSON.stringify({ qr_secret: qrSecret, document_request_id: documentRequestId }),
     });
   },
 
@@ -509,8 +497,8 @@ export const portalApi = {
     return apiFetch('/queue/lobby');
   },
 
-  async getQueueStatus(studentNumber: string): Promise<{ success: boolean } & QueueStatusResponse> {
-    return apiFetch(`/queue/status?student_number=${encodeURIComponent(studentNumber)}`);
+  async getQueueStatus(): Promise<{ success: boolean } & QueueStatusResponse> {
+    return apiFetch('/queue/status');
   },
 
   async getStaffQueue(serviceStage: ServiceStage): Promise<{ success: boolean } & StaffQueueData> {
@@ -532,11 +520,31 @@ export const portalApi = {
     return apiFetch(`/queue/${tokenId}/no-show`, { method: 'POST' });
   },
 
-  async completeTransaction(tokenId: number, action: 'pay_and_process' | 'release_document'): Promise<{ success: boolean; message: string; token: QueueToken }> {
+  async completeTransaction(tokenId: number, action: 'pay_and_process' | 'release_document', physicalTokenReference: string): Promise<{ success: boolean; message: string; token: QueueToken }> {
     return apiFetch(`/queue/${tokenId}/complete`, {
       method: 'POST',
-      body: JSON.stringify({ action }),
+      body: JSON.stringify({ action, physical_token_reference: physicalTokenReference }),
     });
+  },
+
+  async markPhysicalTokenMissing(physicalTokenId: number): Promise<{ success: boolean; message: string }> {
+    return apiFetch(`/queue/physical-tokens/${physicalTokenId}/missing`, { method: 'POST' });
+  },
+
+  async resetPhysicalToken(physicalTokenId: number): Promise<{ success: boolean; message: string }> {
+    return apiFetch(`/queue/physical-tokens/${physicalTokenId}/reset`, { method: 'POST' });
+  },
+
+  async getPhysicalTokens(serviceStage: ServiceStage): Promise<{ success: boolean; stage: ServiceStage; tokens: PhysicalQueueTokenRecord[] }> {
+    return apiFetch(`/queue/physical-tokens?service_stage=${serviceStage}`);
+  },
+
+  async getPhysicalTokenHistory(physicalTokenId: number): Promise<{ success: boolean; token: PhysicalQueueTokenRecord }> {
+    return apiFetch(`/queue/physical-tokens/${physicalTokenId}/history`);
+  },
+
+  async getPhysicalTokenQr(physicalTokenId: number): Promise<{ success: boolean; reference: string; service_stage: ServiceStage; qr_secret: string }> {
+    return apiFetch(`/queue/physical-tokens/${physicalTokenId}/qr`);
   },
 
   async markReadyForPickup(tokenId: number): Promise<{ success: boolean; message: string; token: QueueToken }> {

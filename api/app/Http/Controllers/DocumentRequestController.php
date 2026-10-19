@@ -104,6 +104,11 @@ class DocumentRequestController extends Controller
         }
 
         $docRequest = DocumentRequest::with('student.user')->findOrFail($id);
+        if ($request->input('status') === 'released') {
+            return response()->json([
+                'message' => 'Release this document through Registrar Queue Management after the student checks in and is called.',
+            ], 422);
+        }
 
         if ($request->has('payment_status')) {
             if ($docRequest->payment_status === 'paid' && $request->payment_status !== 'paid') {
@@ -145,15 +150,10 @@ class DocumentRequestController extends Controller
         DB::transaction(function () use ($docRequest, $request) {
             $docRequest->save();
 
-            if ($request->status === 'ready_for_pickup') {
-                $this->ensureRegistrarToken($docRequest);
-            }
-
-            if ($request->status === 'released') {
+            if ($request->input('status') === 'ready_for_pickup') {
                 QueueToken::where('document_request_id', $docRequest->id)
-                    ->where('service_stage', 'registrar')
-                    ->whereDate('queue_date', now()->toDateString())
-                    ->whereIn('status', ['waiting', 'serving'])
+                    ->where('service_stage', 'cashier')
+                    ->where('status', 'hold')
                     ->update([
                         'status' => 'completed',
                         'completed_at' => now(),
@@ -165,32 +165,6 @@ class DocumentRequestController extends Controller
             'success' => true,
             'message' => 'Document request updated successfully.',
             'request' => $docRequest,
-        ]);
-    }
-
-    private function ensureRegistrarToken(DocumentRequest $docRequest): QueueToken
-    {
-        $existingToken = QueueToken::where('document_request_id', $docRequest->id)
-            ->where('service_stage', 'registrar')
-            ->whereDate('queue_date', now()->toDateString())
-            ->whereNotIn('status', ['completed', 'no_show', 'skipped'])
-            ->first();
-
-        if ($existingToken) {
-            return $existingToken;
-        }
-
-        $sequence = QueueToken::nextSequence('registrar');
-
-        return QueueToken::create([
-            'token_number' => QueueToken::generateTokenNumber('registrar', $sequence),
-            'daily_sequence' => $sequence,
-            'student_id' => $docRequest->student_id,
-            'document_request_id' => $docRequest->id,
-            'service_stage' => 'registrar',
-            'status' => 'waiting',
-            'queue_date' => now()->toDateString(),
-            'checked_in_at' => now(),
         ]);
     }
 }

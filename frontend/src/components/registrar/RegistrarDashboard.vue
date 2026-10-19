@@ -72,7 +72,7 @@
         class="px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap"
         :class="activeTab === 'queue' ? 'bg-[#064e3b] text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
       >
-        <span>Queue Management</span>
+        <span>Queue & QR Tokens</span>
       </button>
     </div>
 
@@ -229,7 +229,7 @@
     <div v-if="activeTab === 'documents'" class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
       <div class="p-4 border-b border-slate-100 flex items-center justify-between">
         <h3 class="text-sm font-bold text-slate-900">Official Document Fulfillment Queue</h3>
-        <span class="text-xs text-slate-500">Release documents upon payment confirmation</span>
+        <span class="text-xs text-slate-500">Cashier payment → Processing → Ready for Pick-up → Registrar queue release</span>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
@@ -255,7 +255,7 @@
               </td>
               <td class="py-3.5 px-4 text-center">
                 <span class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase" :class="formatDocStatusClass(doc.status)">
-                  {{ doc.status }}
+                  {{ formatDocStatus(doc.status) }}
                 </span>
               </td>
               <td class="py-3.5 px-4 text-right space-x-1">
@@ -264,15 +264,11 @@
                   @click="updateDocStatus(doc.id, 'ready_for_pickup')"
                   class="px-2.5 py-1 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg text-xs font-bold border border-purple-200"
                 >
-                  Mark Ready
+                  Mark Ready for Pick-up
                 </button>
-                <button
-                  v-if="doc.status === 'ready_for_pickup'"
-                  @click="updateDocStatus(doc.id, 'released')"
-                  class="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-bold border border-emerald-200"
-                >
-                  Release Document
-                </button>
+                <span v-if="doc.status === 'ready_for_pickup'" class="text-[11px] text-slate-500">
+                  Student scans a Registrar token QR and joins the pickup queue.
+                </span>
               </td>
             </tr>
           </tbody>
@@ -376,7 +372,7 @@ import type { StudentApplication, Student, DocumentRequest, AcademicSection } fr
 
 const activeTab = ref<'applications' | 'students' | 'documents' | 'queue'>('applications');
 watch(activeSidebarSection, (page) => {
-  if (page === 'applications' || page === 'students' || page === 'documents') activeTab.value = page;
+  if (page === 'applications' || page === 'students' || page === 'documents' || page === 'queue') activeTab.value = page;
 });
 const filterType = ref('all');
 const filterStatus = ref('all');
@@ -491,11 +487,25 @@ function formatCategoryClass(type?: string) {
 
 function formatDocStatusClass(status: string) {
   switch (status) {
+    case 'waiting_for_payment': return 'bg-amber-100 text-amber-800';
     case 'submitted': return 'bg-amber-100 text-amber-800';
     case 'processing': return 'bg-blue-100 text-blue-800';
     case 'ready_for_pickup': return 'bg-purple-100 text-purple-800';
     case 'released': return 'bg-emerald-100 text-emerald-800';
+    case 'rejected': return 'bg-red-100 text-red-800';
     default: return 'bg-slate-100 text-slate-800';
+  }
+}
+
+function formatDocStatus(status: string) {
+  switch (status) {
+    case 'waiting_for_payment': return 'Waiting for Cashier Payment';
+    case 'submitted': return 'Submitted';
+    case 'processing': return 'Processing';
+    case 'ready_for_pickup': return 'Ready for Pick-up';
+    case 'released': return 'Released';
+    case 'rejected': return 'Rejected';
+    default: return status;
   }
 }
 

@@ -9,6 +9,12 @@
 
       <main class="min-w-0 flex-1 overflow-x-clip" :class="isPublicQueuePage ? '' : 'p-4 sm:p-6 lg:p-8'">
         <LegalPage v-if="legalPage" :kind="legalPage" />
+        <div v-else-if="queueTokenSecret">
+          <PhysicalTokenCheckIn :qr-secret="queueTokenSecret" />
+          <div v-if="!authState.user" class="mx-auto mt-4 max-w-xl">
+            <LoginModal :model-value="true" inline />
+          </div>
+        </div>
         <PortalErrorView v-else-if="authState.serviceUnavailable" kind="service-unavailable" @retry="retryConnection" />
         <PortalErrorView v-else-if="routeError" :kind="routeError" @home="goHome" @signout="portalApi.logout()" />
         <template v-else>
@@ -30,20 +36,13 @@
             <AdminDashboard v-else-if="authState.user.role === 'admin'" />
           </div>
 
+          <PublicEnrollment v-else-if="publicEnrollment" />
+
           <!-- Public landing, laid out as a bento grid like the reference dashboard -->
           <div v-else class="relative isolate -mx-4 -mt-4 min-h-[calc(100dvh-5.5rem)] overflow-hidden sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-mt-8">
             <CampusScene />
-            <section
-              class="relative z-10 mx-auto grid w-full max-w-[90rem] content-start gap-6 px-4 pt-4 pb-[16.5rem] sm:px-6 sm:pt-6 lg:grid-rows-[max(37rem,calc(100dvh-22.25rem))] lg:px-8 lg:pt-8 lg:transition-[grid-template-columns,column-gap] lg:duration-500 lg:ease-in-out motion-reduce:transition-none"
-              :class="authMode === 'register' ? 'lg:grid-cols-[minmax(0,0fr)_minmax(22rem,1fr)] lg:gap-x-0' : 'lg:grid-cols-[minmax(0,1.5fr)_minmax(22rem,0.7fr)]'"
-            >
-            <!-- Services column: slides away while the new-student form takes the full width -->
-            <div
-              class="order-2 min-w-0 overflow-hidden lg:h-full transition-[opacity,translate,max-height] duration-500 ease-in-out motion-reduce:transition-none lg:order-1 lg:max-h-none"
-              :class="authMode === 'register' ? 'pointer-events-none max-h-0 -translate-x-8 opacity-0' : 'max-h-[70rem]'"
-              :inert="authMode === 'register'"
-              :aria-hidden="authMode === 'register'"
-            >
+            <section class="relative z-10 mx-auto grid w-full max-w-[90rem] content-start gap-6 px-4 pt-4 pb-[16.5rem] sm:px-6 sm:pt-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(22rem,0.7fr)] lg:grid-rows-[max(37rem,calc(100dvh-22.25rem))] lg:px-8 lg:pt-8">
+            <div class="order-2 min-w-0 overflow-hidden lg:order-1 lg:h-full lg:max-h-none">
               <div class="grid content-start gap-6 lg:h-full lg:min-w-[30rem] lg:grid-rows-[auto_minmax(0,1fr)]">
                 <div>
                   <p class="text-sm text-slate-500">Welcome to the University Portal</p>
@@ -54,7 +53,7 @@
               </div>
             </div>
             <div class="order-1 min-w-0 lg:order-2">
-              <LoginModal v-model:mode="authMode" :model-value="true" inline />
+              <LoginModal :model-value="true" inline />
             </div>
             </section>
           </div>
@@ -109,6 +108,8 @@ import LandingCarousel from './components/LandingCarousel.vue';
 import CampusScene from './components/scene/CampusScene.vue';
 import Toast from './components/Toast.vue';
 import LoginModal from './components/auth/LoginModal.vue';
+import PublicEnrollment from './components/enrollment/PublicEnrollment.vue';
+import PhysicalTokenCheckIn from './components/queue/PhysicalTokenCheckIn.vue';
 import PortalErrorView from './components/PortalErrorView.vue';
 import StudentDashboard from './components/student/StudentDashboard.vue';
 import RegistrarDashboard from './components/registrar/RegistrarDashboard.vue';
@@ -131,9 +132,10 @@ const currentPageLabel = computed(() => {
   return (role && navItemsByRole[role].find((i) => i.page === activeSidebarSection.value)?.label) || 'Dashboard';
 });
 
-const authMode = ref<'login' | 'register'>('login');
+const publicEnrollment = ref(false);
 const routeError = ref<'not-found' | 'forbidden' | null>(null);
 const legalPage = ref<'terms' | 'privacy' | null>(null);
+const queueTokenSecret = ref<string | null>(null);
 
 function goHome() {
   window.location.assign('/');
@@ -144,7 +146,11 @@ function retryConnection() {
 }
 
 onMounted(() => {
-  if (pathname === '/terms') legalPage.value = 'terms';
+  const url = new URL(window.location.href);
+  const physicalTokenSecret = url.searchParams.get('queue_token');
+  if (pathname === '/queue/check-in' && physicalTokenSecret) queueTokenSecret.value = physicalTokenSecret;
+  else if (pathname === '/apply' || pathname === '/enroll') publicEnrollment.value = true;
+  else if (pathname === '/terms') legalPage.value = 'terms';
   else if (pathname === '/privacy') legalPage.value = 'privacy';
   else if (pathname === '/403' || pathname === '/forbidden') routeError.value = 'forbidden';
   else if (!['/', '/index.html', '/kiosk', '/queue-monitor'].includes(pathname)) routeError.value = 'not-found';
