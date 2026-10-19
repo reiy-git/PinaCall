@@ -75,9 +75,9 @@
         <SlideArt variant="join" class="text-navy" />
         <div class="relative flex h-full max-w-xl flex-col justify-center gap-4 p-6 pb-20 sm:p-10 sm:pb-20">
           <span class="w-fit rounded-lg bg-navy px-2 py-1 text-xs font-semibold text-lime">New student</span>
-          <h3 class="text-3xl font-bold tracking-tight">Start your registration online.</h3>
-          <p class="text-base text-navy/80">Create a student account and submit your credentials without queuing at the registrar.</p>
-          <a href="#sign-in" class="mt-2 w-fit rounded-2xl bg-coral px-5 py-3 text-sm font-semibold text-white transition hover:brightness-105">Create account</a>
+          <h3 class="text-3xl font-bold tracking-tight">Start your application online.</h3>
+          <p class="text-base text-navy/80">Submit your application and supporting documents for Registrar review without queuing at the registrar.</p>
+          <a href="/apply" class="mt-2 w-fit rounded-2xl bg-coral px-5 py-3 text-sm font-semibold text-white transition hover:brightness-105">Apply for admission</a>
         </div>
       </article>
     </div>

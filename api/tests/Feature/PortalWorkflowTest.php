@@ -187,7 +187,8 @@ class PortalWorkflowTest extends TestCase
         ])->assertOk();
         $this->patchJson("/api/documents/{$documentId}/status", [
             'status' => 'released',
-        ])->assertOk()->assertJsonPath('request.status', 'released');
+        ])->assertUnprocessable()
+            ->assertJsonPath('message', 'Release this document through Registrar Queue Management after the student checks in and is called.');
 
         $this->actingAsPortalUser($studentUser);
         $this->getJson('/api/dashboard/stats')->assertForbidden();

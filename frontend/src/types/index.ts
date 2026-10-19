@@ -200,6 +200,10 @@ export interface QueueToken {
     user?: { name: string; email: string };
   };
   document_request?: DocumentRequest;
+  physical_queue_token?: {
+    reference: string;
+    status: string;
+  } | null;
 }
 
 export interface LobbyDisplayData {
@@ -231,9 +235,48 @@ export interface StaffQueueData {
   };
 }
 
+export interface PhysicalQueueTokenRecord {
+  id: number;
+  reference: string;
+  service_stage: ServiceStage;
+  status: 'available' | 'assigned' | 'called' | 'missing' | 'locked' | 'disabled';
+  assigned_at?: string | null;
+  last_reset_at?: string | null;
+  assigned_student?: {
+    id: number;
+    name: string;
+    student_number: string;
+    user?: { name: string; email: string };
+  } | null;
+  assigned_queue_ticket?: QueueToken & { document_request?: DocumentRequest } | null;
+  last_reset_by_staff?: Pick<User, 'id' | 'name'> | null;
+  events?: PhysicalQueueTokenEvent[];
+  attempts?: PhysicalQueueTokenAttempt[];
+}
+
+export interface PhysicalQueueTokenEvent {
+  id: number;
+  event_type: string;
+  notes?: string | null;
+  created_at: string;
+  student?: PhysicalQueueTokenRecord['assigned_student'];
+  staff?: Pick<User, 'id' | 'name'> | null;
+  queue_ticket?: (QueueToken & { document_request?: DocumentRequest }) | null;
+}
+
+export interface PhysicalQueueTokenAttempt {
+  id: number;
+  result: string;
+  reason?: string | null;
+  service_date: string;
+  created_at: string;
+  student?: PhysicalQueueTokenRecord['assigned_student'];
+  queue_ticket?: (QueueToken & { document_request?: DocumentRequest }) | null;
+}
+
 export interface QueueStatusResponse {
-  student_name: string;
-  student_number: string;
+  student_name?: string;
+  student_number?: string;
   tokens: QueueToken[];
   active_token: QueueToken | null;
   position_in_queue: number | null;

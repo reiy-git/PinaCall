@@ -64,7 +64,7 @@
         class="px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap"
         :class="activeTab === 'queue' ? 'bg-[#064e3b] text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
       >
-        <span>Queue Management</span>
+        <span>Queue & QR Tokens</span>
       </button>
     </div>
 
@@ -191,7 +191,7 @@ import StaffQueueConsole from '../queue/StaffQueueConsole.vue';
 
 const activeTab = ref<'clearances' | 'documents' | 'queue'>('clearances');
 watch(activeSidebarSection, (page) => {
-  if (page === 'clearances' || page === 'documents') activeTab.value = page;
+  if (page === 'clearances' || page === 'documents' || page === 'queue') activeTab.value = page;
 });
 const clearancesList = ref<Clearance[]>([]);
 const documentsList = ref<DocumentRequest[]>([]);

@@ -5,6 +5,7 @@
       <button type="button" class="ml-2 font-bold underline" @click="loadStudentData">Retry</button>
     </p>
     <p v-if="isLoadingData" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600" role="status">Loading your academic records and services…</p>
+    <StudentQueueStatus />
     <!-- Student Profile Header Banner -->
     <div class="bg-gradient-to-r from-[#1b2750] via-[#2a3b6f] to-[#161f3d] rounded-3xl p-6 text-white shadow-lg border border-emerald-800/40">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -528,7 +529,7 @@
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
         <div>
           <h3 class="text-lg font-bold text-slate-900">Official Document Request Center</h3>
-          <p class="text-xs text-slate-500 mt-0.5">Order official university credentials, transcripts, and certificates online.</p>
+          <p class="text-xs text-slate-500 mt-0.5">Request online, then follow the status: Cashier payment → Processing → Ready for Pick-up → Registrar queue.</p>
         </div>
         <button
           @click="showRequestModal = true"
@@ -653,6 +654,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { authState, formatDisplayName, portalApi } from '../../services/api';
 import { activeSidebarSection } from '../../services/navigation';
 import Modal from '../Modal.vue';
+import StudentQueueStatus from '../queue/StudentQueueStatus.vue';
 import SectionWorkspace from '../sections/SectionWorkspace.vue';
 import type { StudentType, StudentApplication, Clearance, Enrollment, DocumentRequest } from '../../types';
 
@@ -845,20 +847,24 @@ function getStudentTypeAdvising(type?: string) {
 
 function formatDocStatus(status: string) {
   switch (status) {
-    case 'submitted': return 'Submitted / Awaiting Payment';
+    case 'waiting_for_payment': return 'Waiting for Cashier Payment';
+    case 'submitted': return 'Submitted';
     case 'processing': return 'Processing';
     case 'ready_for_pickup': return 'Ready for Pick-up';
     case 'released': return 'Released';
+    case 'rejected': return 'Rejected';
     default: return status;
   }
 }
 
 function formatDocStatusClass(status: string) {
   switch (status) {
-    case 'submitted': return 'bg-amber-100 text-amber-800';
+    case 'waiting_for_payment': return 'bg-amber-100 text-amber-800';
+    case 'submitted': return 'bg-slate-100 text-slate-800';
     case 'processing': return 'bg-blue-100 text-blue-800';
     case 'ready_for_pickup': return 'bg-purple-100 text-purple-800';
     case 'released': return 'bg-emerald-100 text-emerald-800';
+    case 'rejected': return 'bg-red-100 text-red-800';
     default: return 'bg-slate-100 text-slate-800';
   }
 }

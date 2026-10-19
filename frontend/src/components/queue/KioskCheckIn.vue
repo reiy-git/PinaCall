@@ -76,7 +76,6 @@
 
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
-import { ApiRequestError, portalApi } from '../../services/api';
 import type { QueueToken } from '../../types';
 
 const studentInput = ref<HTMLInputElement | null>(null);
@@ -107,17 +106,10 @@ function clearId() {
 }
 
 async function submitCheckin() {
-  if (!studentId.value.trim() || isLoading.value) return;
-  isLoading.value = true;
-  try {
-    result.value = await portalApi.kioskCheckin(studentId.value.trim());
-    resetTimer = setTimeout(resetForm, result.value.success ? 8000 : 5000);
-  } catch (error) {
-    result.value = { success: false, message: error instanceof ApiRequestError || error instanceof Error ? error.message : 'Check-in failed. Please try again.' };
-    resetTimer = setTimeout(resetForm, 5000);
-  } finally {
-    isLoading.value = false;
-  }
+  result.value = {
+    success: false,
+    message: 'Kiosk check-in has been retired. Scan a physical queue token while signed in to the student portal.',
+  };
 }
 
 function resetForm() {

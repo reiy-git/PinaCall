@@ -1,0 +1,23 @@
+const { chromium } = require('playwright');
+const crypto = require('crypto');
+(async () => {
+ const browser=await chromium.connectOverCDP('http://127.0.0.1:9222');
+ const context=browser.contexts()[0];
+ const page=await context.newPage();
+ const errors=[]; page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+ await page.goto('http://localhost:5173/',{waitUntil:'networkidle'});
+ await page.getByLabel('Email address').fill('alex.new@student.university.edu');
+ await page.getByRole('textbox',{name:'Password'}).fill('Pinacall-Demo-Only-2026!');
+ await page.getByRole('button',{name:/^sign in$/i}).click();
+ await page.waitForTimeout(2000);
+ const session=await page.evaluate(()=>({token:sessionStorage.getItem('pinacall_access_token'), user:sessionStorage.getItem('pinacall_user')}));
+ console.log('SESSION',JSON.stringify(session));
+ const key=Buffer.from('cGluYWNhbGwtbG9jYWwtZGVtby1rZXktbm90LXByb2Q=','base64');
+ const secret=crypto.createHmac('sha256',key).update('R-01').digest('hex');
+ await page.goto(`http://localhost:5173/queue/check-in?queue_token=${secret}`,{waitUntil:'networkidle'});
+ await page.waitForTimeout(2000);
+ console.log('BODY',await page.locator('body').innerText());
+ console.log('OPTIONS',await page.locator('#queue-request option').allTextContents());
+ console.log('ERRORS',errors);
+ await page.screenshot({path:'browser-queue-debug.png',fullPage:true});
+})().catch(e=>{console.error(e);process.exit(1)});

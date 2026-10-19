@@ -45,6 +45,11 @@ class Student extends Model
         return $this->hasMany(DocumentRequest::class);
     }
 
+    public function physicalQueueTokens()
+    {
+        return $this->hasMany(PhysicalQueueToken::class, 'assigned_student_id');
+    }
+
     public function sections()
     {
         return $this->belongsToMany(AcademicSection::class, 'section_enrollments')

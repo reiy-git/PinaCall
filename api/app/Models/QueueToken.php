@@ -43,6 +43,11 @@ class QueueToken extends Model
         return $this->belongsTo(DocumentRequest::class);
     }
 
+    public function physicalQueueToken()
+    {
+        return $this->hasOne(PhysicalQueueToken::class, 'assigned_queue_token_id');
+    }
+
     public static function nextSequence(string $stage = 'cashier'): int
     {
         $today = now()->toDateString();
@@ -56,6 +61,7 @@ class QueueToken extends Model
     public static function generateTokenNumber(string $stage, int $sequence): string
     {
         $prefix = $stage === 'cashier' ? 'Q' : 'R';
+
         return sprintf('%s-%03d', $prefix, $sequence);
     }
 }

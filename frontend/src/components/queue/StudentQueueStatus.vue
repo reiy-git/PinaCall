@@ -1,5 +1,5 @@
 <template>
-  <div v-if="hasActiveQueue || hasQueueHistory" class="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5 shadow-sm">
+  <div class="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5 shadow-sm">
     <h3 class="text-sm font-bold uppercase tracking-wider text-emerald-700 mb-4">Queue Status</h3>
 
     <!-- Active Token -->
@@ -56,6 +56,15 @@
     <div v-else-if="hasQueueHistory" class="text-sm text-slate-500">
       No active queue token. Your completed tokens for today are listed below.
     </div>
+    <div v-else class="rounded-xl border border-dashed border-emerald-200 bg-white p-4 text-sm text-slate-700">
+      <p class="font-bold text-slate-900">How to join the queue</p>
+      <ol class="mt-2 list-decimal space-y-1 pl-5">
+        <li>At the service counter, take an available reusable token for the step you need: Cashier for payment, or Registrar for pickup.</li>
+        <li>Scan the QR printed on that token and sign in here. Choose your document request and tap <strong>Join queue</strong>.</li>
+        <li>Keep the physical token and your printed queue number; bring both when your number is called.</li>
+      </ol>
+      <p class="mt-2 text-xs text-slate-500">A Registrar token is for requests marked Ready for Pick-up. A payment-required request starts at the Cashier.</p>
+    </div>
 
     <!-- Today's token history -->
     <div v-if="completedTokens.length" class="mt-4">
@@ -93,19 +102,18 @@ let refreshInterval: ReturnType<typeof setInterval>;
 
 const activeToken = computed(() => statusData.value?.active_token || null);
 const position = computed(() => statusData.value?.position_in_queue || null);
-const hasActiveQueue = computed(() => !!activeToken.value);
 const completedTokens = computed<QueueToken[]>(() =>
   (statusData.value?.tokens || []).filter(t => ['completed', 'no_show', 'skipped'].includes(t.status))
 );
 const hasQueueHistory = computed(() => completedTokens.value.length > 0);
 
 async function loadStatus() {
-  const studentNumber = authState.user?.student?.student_number;
-  if (!studentNumber) return;
+  if (!authState.user?.student) return;
   try {
-    statusData.value = await portalApi.getQueueStatus(studentNumber);
+    statusData.value = await portalApi.getQueueStatus();
+    if (!statusData.value.active_token) clearInterval(refreshInterval);
   } catch {
-    // retry on next interval
+    // retry on the next scheduled interval
   }
 }
 
